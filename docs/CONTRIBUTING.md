@@ -6,7 +6,7 @@ will help you get started.
 
 ## Code of Conduct
 
-Please note that Trellis has a [Code of Conduct](docs/CODE_OF_CONDUCT.md). By
+Please note that Trellis has a [Code of Conduct](CODE_OF_CONDUCT.md). By
 contributing, you agree to abide by its terms. We're committed to creating a
 welcoming and inclusive environment for all contributors.
 
@@ -62,19 +62,18 @@ Unsure where to begin? Look for these tags in our issues:
 
 ```bash
 # Clone your fork
-git clone https://github.com/jrwinget/trellis.git
+git clone https://github.com/YOUR_USERNAME/trellis.git
 cd trellis
 
 # Add upstream remote
-git remote add upstream https://github.com/trellis-ai/trellis.git
+git remote add upstream https://github.com/jrwinget/trellis.git
 
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# Install in development mode
-pip install -e .
-pip install -r requirements-dev.txt
+# Install in development mode with dev dependencies
+pip install -e ".[dev]"
 
 # Install pre-commit hooks
 pre-commit install
@@ -87,10 +86,10 @@ pre-commit install
 pytest
 
 # Run specific test file
-pytest tests/test_planner.py
+pytest tests/test_agents.py
 
 # Run with coverage
-pytest --cov=trellis --cov-report=html
+pytest --cov=packages --cov-report=html
 
 # Run only fast tests (skip integration tests)
 pytest -m "not integration"
@@ -106,15 +105,40 @@ pytest -m "not integration"
 
 Example test structure:
 ```python
-def test_agent_transforms_vague_input_into_structured_plan():
+@pytest.mark.asyncio
+@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
+async def test_agent_transforms_vague_input_into_structured_plan(mock_chat):
     """Test that vague project descriptions produce structured outputs."""
-    agent = TrellisAgent(api_key="test-key")
+    # Setup mock
+    mock_chat.return_value = '[{"id": "task1", "title": "Task 1", "detail": "Detail 1", "priority": "P1", "estimate_h": 5, "done": false}]'
     
-    result = agent.plan("build a website")
+    # Call the function
+    result = await plan_llm({"goal": "build a website"})
     
-    assert result.sprints is not None
-    assert len(result.tasks) > 0
-    assert all(task.priority in ["high", "medium", "low"] for task in result.tasks)
+    # Verify the result
+    assert "tasks" in result
+    assert len(result["tasks"]) > 0
+    assert all(task.priority in ["P0", "P1", "P2", "P3"] for task in result["tasks"])
+```
+
+## Project Structure
+
+```
+trellis/
+├── apps/               # Application entry points
+│   ├── server/         # FastAPI server
+│   │   ├── main.py     # API endpoints
+│   │   └── pipeline.py # LangGraph pipeline
+│   └── cli.py          # Command-line interface
+├── packages/           # Core packages
+│   └── core/           # Core functionality
+│       ├── providers/  # LLM providers
+│       ├── agents.py   # Agent functions
+│       ├── memory.py   # Vector storage
+│       ├── models.py   # Data models
+│       └── settings.py # Configuration
+├── tests/              # Test suite
+└── docs/               # Documentation
 ```
 
 ## Documentation
@@ -124,28 +148,25 @@ def test_agent_transforms_vague_input_into_structured_plan():
 We use NumPy-style docstrings:
 
 ```python
-def plan(self, description: str, context: str = None) -> Plan:
+def plan_llm(state: dict) -> dict:
     """
-    Transform a project description into a structured plan.
+    Transform goal into tasks.
     
     Parameters
     ----------
-    description : str
-        High-level project description or goal
-    context : str, optional
-        Additional context to inform planning
+    state : dict
+        Dictionary containing the goal
         
     Returns
     -------
-    Plan
-        Structured plan with sprints, tasks, and estimates
+    dict
+        Dictionary containing the tasks
         
     Examples
     --------
-    >>> agent = TrellisAgent()
-    >>> plan = agent.plan("Create a mobile app")
-    >>> print(len(plan.sprints))
-    3
+    >>> result = await plan_llm({"goal": "Create a mobile app"})
+    >>> print(len(result["tasks"]))
+    5
     """
 ```
 
@@ -179,11 +200,11 @@ Types:
 
 Examples:
 ```
-feat(planner): add support for recurring tasks
+feat(providers): add support for Anthropic Claude
 
-fix(voice): improve speech recognition accuracy
+fix(cli): improve error handling for API connection failures
 
-docs(api): update plan() method documentation
+docs(readme): update installation instructions
 ```
 
 ## Release Process
@@ -199,14 +220,14 @@ Releases are automated via GitHub Actions when tags are pushed.
 ## Getting Help
 
 * **Discussions**: Use GitHub Discussions for longer-form questions
-* **Email**: [contact@jrwinget.com](mailto:contact@jrwinget.com)] for sensitive
+* **Email**: [contact@jrwinget.com](mailto:contact@jrwinget.com) for sensitive
   matters
 
 ## Recognition
 
 We value all contributions! Contributors are:
 
-* Added to our [AUTHORS](docs/AUTHORS.md) file
+* Added to our AUTHORS file
 * Mentioned in release notes
 * Eligible for contributor badges
 
@@ -221,4 +242,4 @@ We value all contributions! Contributors are:
 ## License
 
 By contributing, you agree that your contributions will be licensed under the
-same [AGPL License](LICENSE) that covers the project.
+same [AGPL License](../LICENSE) that covers the project.

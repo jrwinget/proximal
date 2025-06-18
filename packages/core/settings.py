@@ -22,6 +22,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _check_env(self):
+        import os
+
+        # skip .env file check in test environment
+        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+            return self
+
         env_path = Path(".env")
         if not env_path.exists():
             raise FileNotFoundError(

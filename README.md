@@ -1,15 +1,22 @@
 # Trellis 🌿
 
+<!-- badges: start -->
+[![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Tests](https://github.com/jrwinget/trellis/actions/workflows/test.yml/badge.svg)](https://github.com/jrwinget/trellis/actions/workflows/test.yml)
+[![Code Size](https://img.shields.io/github/languages/code-size/jrwinget/trellis)](https://github.com/jrwinget/trellis)
+<!-- badges: end -->
+
 An AI agent that transforms vague ideas into actionable project plans through
 natural conversation.
 
 ## Overview
 
 Trellis acts as a personal project manager, breaking down complex goals and
-ambiguous thoughts into structured, sprint-based roadmaps. Through natural
-language interaction (text and voice), it helps clarify task requirements,
-identify dependencies, and create comprehensive action plans with priority
-levels and time estimates.
+ambiguous thoughts into structured, sprint-based road maps. Through natural
+language interaction, it helps clarify task requirements, identify dependencies,
+and create comprehensive action plans with priority levels and time estimates.
 
 ## Features
 
@@ -21,113 +28,96 @@ levels and time estimates.
 - **Sprint Planning**: Automatically organizes tasks into manageable sprints
 - **Smart Estimation**: Provides effort estimates based on task complexity
 - **Dependency Mapping**: Identifies and visualizes task relationships
-- **Priority Tagging**: Assigns priority levels based on context and deadlines
+- **Priority Tagging**: Assigns priority levels (P0-P3) based on context and
+  deadlines
 
 ### 🔧 Technical Features
-- **Multi-Modal Input**: Supports both text and voice interactions
-- **Tool Integration**: Seamlessly connects with Jira, Asana, Linear, and other
-  PM tools
+- **Multi-Provider Support**: Works with OpenAI, Anthropic, and Ollama LLMs
+- **Tool Integration**: Seamlessly connects with project management tools
 - **Adaptive Communication**: Adjusts tone from casual brainstorming to formal
   documentation
 - **Continuous Learning**: Improves planning accuracy based on user feedback
-- **Context Awareness**: Remembers project history and user preferences
+- **Context Awareness**: Remembers project history and user preferences through
+  vector storage
 
 ## Getting Started
 
 ### Prerequisites
-```bash
-# Required
-- Python 3.9+
-- OpenAI API key or compatible LLM endpoint
-- Node.js 18+ (for voice interface)
-
-# Optional (for integrations)
-- Jira/Asana/Linear API credentials
-```
+- Python 3.12+
+- LLM provider (at least one of):
+  - Ollama running locally
+  - OpenAI API key
+  - Anthropic API key
+- Weaviate for memory storage
 
 ### Installation
 ```bash
-# Clone the repository
+# clone repo
 git clone https://github.com/jrwinget/trellis.git
 cd trellis
 
-# Install dependencies
-pip install -r requirements.txt
-npm install
+# install dependencies
+pip install -e .
 
-# Set up environment variables
+# set up environment variables
 cp .env.example .env
-# Edit .env with your API keys
+# edit .env with your provider choice and credentials
 ```
 
 ### Quick Start
-```python
-from trellis import TrellisAgent
+```bash
+# start the server
+python -m apps.server.main
 
-# Initialize the agent
-agent = TrellisAgent(api_key="your-api-key")
-
-# Transform an idea into a plan
-plan = agent.plan("I want to build a mobile app for tracking habits")
-
-# View the structured output
-print(plan.sprints)
-print(plan.tasks)
-print(plan.timeline)
+# in another terminal, use the CLI
+trellis plan "I want to build a mobile app for tracking habits"
 ```
 
 ## Usage Examples
 
-### Basic Planning
-```python
-# Simple project breakdown
-agent.plan("Create a portfolio website")
-
-# With context
-agent.plan(
-    "Redesign the user dashboard",
-    context="SaaS product, 10k users, focus on performance"
-)
-```
-
-### Voice Interface
+### CLI Interface
 ```bash
-# Start voice planning session
-trellis voice
+# basic planning
+trellis plan "Create a portfolio website"
 
-# Or use in Python
-agent.voice_session()
+# save plan to a file
+trellis plan "Redesign the user dashboard" --output plan.json
+
+# show version
+trellis version
 ```
 
-### Integration with PM Tools
+### API Usage
 ```python
-# Export to Jira
-agent.export_to_jira(plan, project_key="PROJ")
+# using the API directly
+import httpx
 
-# Sync with Linear
-agent.sync_with_linear(plan, team_id="team-123")
+response = httpx.post(
+    "http://localhost:7315/plan",
+    json={"message": "Build a task management app"}
+)
+
+sprints = response.json()
 ```
 
 ## Architecture
 
 ```
 trellis/
-├── core/
-│   ├── agent.py          # Main agent logic
-│   ├── planner.py        # Task breakdown engine
-│   ├── estimator.py      # Effort estimation
-│   └── prioritizer.py    # Priority assignment
-├── interfaces/
-│   ├── text.py           # Text interaction
-│   ├── voice.py          # Voice processing
-│   └── api.py            # REST API
-├── integrations/
-│   ├── jira.py
-│   ├── asana.py
-│   └── linear.py
-└── utils/
-    ├── nlp.py            # NLP utilities
-    └── formatters.py     # Output formatting
+├── apps/
+│   ├── server/          # FastAPI server
+│   │   ├── main.py      # API endpoints
+│   │   └── pipeline.py  # LangGraph pipeline
+│   └── cli.py           # Command-line interface
+├── packages/
+│   ├── core/            # Core functionality
+│   │   ├── providers/   # LLM providers
+│   │   ├── agents.py    # Agent functions
+│   │   ├── memory.py    # Vector storage
+│   │   ├── models.py    # Data models
+│   │   └── settings.py  # Configuration
+│   └── voice/           # (Future) Voice interface
+└── tests/               # Test suite
 ```
 
 ## Configuration
@@ -135,43 +125,58 @@ trellis/
 Create a `.env` file with your configuration:
 
 ```env
-# Required
-OPENAI_API_KEY=sk-...
-MODEL_NAME=gpt-4
+# required: choose a LLM provider
+TRELLIS_PROVIDER=ollama  # or openai, anthropic
 
-# Optional
-JIRA_URL=https://company.atlassian.net
-JIRA_EMAIL=you@company.com
-JIRA_API_TOKEN=...
+# For Ollama
+OLLAMA_BASE_URL=http://localhost:8080
+OLLAMA_MODEL=llama3:70b-instruct # ensure the model is available locally
 
-# Voice settings
-VOICE_LANGUAGE=en-US
-VOICE_ACTIVATION=push-to-talk
+# For OpenAI
+# OPENAI_API_KEY=sk-...
+# OPENAI_BASE_URL=https://api.openai.com/v1 # (optional to override)
+# OPENAI_MODEL=gpt-4o-mini # (optional to override)
+
+# For Anthropic
+# ANTHROPIC_API_KEY=sk-...
+# ANTHROPIC_BASE_URL=https://api.anthropic.com/v1 # (optional to override)
+# ANTHROPIC_MODEL=claude-3-haiku # (optional to override)
 ```
 
 ## API Reference
 
-### TrellisAgent
+### FastAPI Endpoints
 
-```python
-agent = TrellisAgent(
-    api_key: str,
-    model: str = "gpt-4",
-    voice_enabled: bool = True,
-    integrations: List[str] = []
-)
-```
-
-### Methods
-
-#### `plan(description: str, context: str = None) -> Plan`
+#### `POST /plan`
 Transforms a project description into a structured plan.
 
-#### `refine(plan: Plan, feedback: str) -> Plan`
-Refines an existing plan based on user feedback.
+Request body:
+```json
+{
+  "message": "Create a todo app"
+}
+```
 
-#### `estimate(tasks: List[Task]) -> List[Task]`
-Adds time estimates to a list of tasks.
+Response:
+```json
+[
+  {
+    "name": "Sprint 1",
+    "start": "2023-06-01",
+    "end": "2023-06-15",
+    "tasks": [
+      {
+        "id": "task1",
+        "title": "Create login page",
+        "detail": "Implement user authentication",
+        "priority": "P1",
+        "estimate_h": 8,
+        "done": false
+      }
+    ]
+  }
+]
+```
 
 ## Contributing
 
@@ -180,15 +185,14 @@ We welcome contributions! Please see our
 
 ### Development Setup
 ```bash
-# Install dev dependencies
-pip install -r requirements-dev.txt
+# install dev dependencies
+pip install -e ".[dev]"
 
-# Run tests
+# run tests
 pytest
 
-# Run linting
-flake8 .
-black .
+# run with coverage
+pytest --cov=packages
 ```
 
 ## Roadmap
@@ -203,7 +207,7 @@ black .
 
 ## License
 
-This project is licensed under the AGPL License License. See the
+This project is licensed under the AGPL License. See the
 [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
