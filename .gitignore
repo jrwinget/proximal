@@ -77,7 +77,10 @@ pnpm-debug.log*
 #  Environment & secrets
 ###############################################################################
 .env
-.env.*
+.env.local
+.env.*.local
+**/.env.local
+
 # OpenAI, HF, AWS creds (just in case someone copies into repo)
 *.key
 *.pem
