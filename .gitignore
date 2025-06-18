@@ -1,0 +1,148 @@
+###############################################################################
+#  Core language-agnostic noise
+###############################################################################
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+*.swp            # vim/posix swap files
+*.swo
+*.bak
+*~               # editor backup markers
+
+# IDE / editors
+.vscode/
+.idea/
+.Rproj.user/     # Positron/RStudio derivative
+*.code-workspace
+*.sublime-*
+
+###############################################################################
+#  Python
+###############################################################################
+# byte-code / optimiser output
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+# build artefacts
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+# venvs
+.venv/
+venv/
+env/
+# tox & coverage
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+# IPython history & checkpoints
+.ipynb_checkpoints/
+.pytest_cache/
+profile/
+# compiled Cython
+*.c
+*.cpp
+# mypy
+.mypy_cache/
+.dmypy.json
+# Ruff, isort, black caches
+*.ruff_cache/
+*.pytest_cache/
+
+###############################################################################
+#  JavaScript / TypeScript (apps/web Next.js)
+###############################################################################
+# package managers
+apps/web/node_modules/
+apps/web/.pnp/
+.pnp.js
+.yarn/
+# Next.js / Vite outputs
+apps/web/.next/
+apps/web/.turbo/
+apps/web/dist/
+apps/web/out/
+# TS build artefacts
+*.tsbuildinfo
+# lockfiles other than primary (keep one canonical lock)
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+###############################################################################
+#  Environment & secrets
+###############################################################################
+.env
+.env.*
+# OpenAI, HF, AWS creds (just in case someone copies into repo)
+*.key
+*.pem
+*.crt
+
+###############################################################################
+#  Docker / container runtime
+###############################################################################
+# Docker layer / compose junk
+**/.docker/
+docker-compose.override.yml
+# local volumes
+weaviate-data/
+postgres-data/
+*.pid
+*.sock
+*.pid.lock
+
+###############################################################################
+#  Data & model artefacts
+###############################################################################
+# Whisper / TTS / Hugging Face model downloads
+*.onnx
+*.bin
+*.pt
+*.ckpt
+models/
+checkpoints/
+# Large torch wheels (prevent accidental add)
+torch-*.whl
+# misc cache
+.cache/
+.cache/**
+
+###############################################################################
+#  Docs / static site
+###############################################################################
+# MkDocs / mike output
+site/
+# Quarto or Sphinx
+_build/
+docs/_site/
+# Generated diagrams
+*.svg?
+*.drawio
+
+###############################################################################
+#  Logs & runtime
+###############################################################################
+*.log
+logs/
+*.log.*
+*.err
+*.out
+nohup.out
+# Profilers & trace files
+*.prof
+*.trace
+
+###############################################################################
+#  Temporary / scratch
+###############################################################################
+tmp/
+temp/
+*.tmp
+*.temp
+*.old
+*.orig
