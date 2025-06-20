@@ -19,7 +19,7 @@ class OllamaChat:
     async def acomplete(cls, messages: list[dict], tools: Any = None) -> str:
         url = cls._get_url()
         payload = {"model": cls._model, "messages": messages}
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
