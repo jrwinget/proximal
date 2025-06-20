@@ -5,16 +5,44 @@ from .models import ConversationState, ConversationMessage, MessageRole, UserPre
 from .memory import client as weaviate_client
 import os
 
-# in-memory session store (consider replacing with redis)
-_sessions: Dict[str, ConversationState] = {}
-_preferences_cache: Optional[UserPreferences] = None
+from abc import ABC, abstractmethod
 
+# Abstract session store interface
+class SessionStore(ABC):
+    @abstractmethod
+    def store_session(self, session_id: str, session: ConversationState):
+        pass
+
+    @abstractmethod
+    def retrieve_session(self, session_id: str) -> Optional[ConversationState]:
+        pass
+
+    @abstractmethod
+    def delete_session(self, session_id: str):
+        pass
+
+# In-memory session store implementation
+class InMemorySessionStore(SessionStore):
+    def __init__(self):
+        self._sessions: Dict[str, ConversationState] = {}
+
+    def store_session(self, session_id: str, session: ConversationState):
+        self._sessions[session_id] = session
+
+    def retrieve_session(self, session_id: str) -> Optional[ConversationState]:
+        return self._sessions.get(session_id)
+
+    def delete_session(self, session_id: str):
+        if session_id in self._sessions:
+            del self._sessions[session_id]
+
+_preferences_cache: Optional[UserPreferences] = None
 
 class SessionManager:
     """Manages conversation sessions with hybrid memory approach"""
 
-    def __init__(self):
-        self.sessions = _sessions
+    def __init__(self, session_store: SessionStore = None):
+        self.session_store = session_store or InMemorySessionStore()
         self.session_timeout = timedelta(hours=1)
         self._ensure_weaviate_schemas()
 
@@ -109,7 +137,7 @@ class SessionManager:
             "session_id": session.session_id,
             "goal": session.goal,
             "messages": json.dumps(messages_data),
-            "final_plan": json.dumps(final_plan) if final_plan else None,
+            "final_plan": json.dumps(final_plan) if final_plan is not None else None,
             "created_at": session.created_at.isoformat(),
         }
 
