@@ -39,7 +39,7 @@ def create_direct_pipeline():
     return g.compile()
 
 
-# interactive pipeline with clarification
+# clarification pipeline
 def create_interactive_pipeline():
     g = StateGraph(PipelineState)
 
@@ -51,13 +51,13 @@ def create_interactive_pipeline():
     g.add_node("estimate", estimate_llm)
     g.add_node("sprint", package_llm)
 
-    # conditional routing based on clarification needs
+    # conditional routing
     def route_after_clarify(state):
         if state.get("needs_clarification", False):
             return "needs_clarification"
         return "proceed"
 
-    # start with clarification check
+    # clarification check
     g.add_edge(START, "clarify")
 
     # conditional edge after clarify

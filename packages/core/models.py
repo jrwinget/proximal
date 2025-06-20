@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import StrEnum
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
@@ -28,7 +28,6 @@ class Sprint(BaseModel):
     tasks: list[Task]
 
 
-# New models for conversation and preferences
 class MessageRole(StrEnum):
     user = "user"
     assistant = "assistant"
@@ -38,7 +37,7 @@ class MessageRole(StrEnum):
 class ConversationMessage(BaseModel):
     role: MessageRole
     content: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ConversationState(BaseModel):
@@ -48,12 +47,12 @@ class ConversationState(BaseModel):
     clarification_count: int = 0
     max_clarifications: int = 2
     status: str = "active"  # active, planning, completed
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def add_message(self, role: MessageRole, content: str):
         self.messages.append(ConversationMessage(role=role, content=content))
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(timezone.utc)
 
     def get_context(self, max_messages: int = 10) -> List[Dict[str, str]]:
         """Get recent conversation context for LLM prompts"""
@@ -74,8 +73,8 @@ class UserPreferences(BaseModel):
     preferred_task_size: str = "medium"  # small, medium, large
     include_breaks: bool = True
     timezone: str = "UTC"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_prompt_context(self) -> str:
         """Convert preferences to a string for LLM context"""

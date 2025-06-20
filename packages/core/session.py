@@ -1,5 +1,5 @@
 from typing import Dict, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import json
 from .models import ConversationState, ConversationMessage, MessageRole, UserPreferences
 from .memory import client as weaviate_client
@@ -70,7 +70,7 @@ class SessionManager:
 
     def _is_session_valid(self, session: ConversationState) -> bool:
         """Check if session is still valid (not timed out)"""
-        age = datetime.utcnow() - session.updated_at
+        age = datetime.now(timezone.utc) - session.updated_at
         return age < self.session_timeout
 
     def update_session(
@@ -98,10 +98,17 @@ class SessionManager:
             return
 
         # persist to weaviate for long-term memory
+        # convert messages to JSON-serializable format
+        messages_data = []
+        for msg in session.messages:
+            msg_dict = msg.model_dump()
+            msg_dict["timestamp"] = msg.timestamp.isoformat()
+            messages_data.append(msg_dict)
+
         history_data = {
             "session_id": session.session_id,
             "goal": session.goal,
-            "messages": json.dumps([msg.model_dump() for msg in session.messages]),
+            "messages": json.dumps(messages_data),
             "final_plan": json.dumps(final_plan) if final_plan else None,
             "created_at": session.created_at.isoformat(),
         }
@@ -148,7 +155,7 @@ class SessionManager:
         """Get user preferences from cache or Weaviate"""
         global _preferences_cache
 
-        # return cache if available
+        # return cached if available
         if _preferences_cache and _preferences_cache.user_id == user_id:
             return _preferences_cache
 
@@ -182,47 +189,28 @@ class SessionManager:
         return _preferences_cache
 
     def save_user_preferences(self, preferences: UserPreferences):
-        """Save user preferences to Weaviate"""
+        """
+        Save user preferences to Weaviate and cache in memory.
+        """
         global _preferences_cache
+        # cache the latest preferences object (single-user model)
         _preferences_cache = preferences
 
+        # skip remote persistence if flagged
         if os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return
 
-        pref_data = {
-            "user_id": preferences.user_id,
-            "preferences": preferences.model_dump_json(),
-            "updated_at": preferences.updated_at.isoformat(),
-        }
+        pref_data = preferences.model_dump()
+        pref_data["updated_at"] = preferences.updated_at.isoformat()
 
-        # check if exists and update; otherwise create
+        # always attempt to persist (weaviate handles duplicates/errors)
         try:
-            result = (
-                weaviate_client.query.get("UserPreferences", ["user_id"])
-                .with_where(
-                    {
-                        "path": ["user_id"],
-                        "operator": "Equal",
-                        "valueText": preferences.user_id,
-                    }
-                )
-                .do()
-            )
-
-            existing = result.get("data", {}).get("Get", {}).get("UserPreferences", [])
-            if existing:
-                # update existing
-                # TODO: need object id, skipping for now
-                pass
-            else:
-                weaviate_client.data_object.create(
-                    data_object=pref_data, class_name="UserPreferences"
-                )
-        except Exception:
-            # Create new
             weaviate_client.data_object.create(
-                data_object=pref_data, class_name="UserPreferences"
+                data_object=pref_data,
+                class_name="UserPreferences",
             )
+        except Exception:
+            pass
 
 
 session_manager = SessionManager()

@@ -11,7 +11,13 @@ sys.path.insert(0, str(project_root))
 # mock session manager before importing app
 with patch("packages.core.session.weaviate_client"):
     from apps.server.main import app
-    from packages.core.models import ConversationState, Sprint, Task, Priority
+    from packages.core.models import (
+        ConversationState,
+        Sprint,
+        Task,
+        Priority,
+        MessageRole,
+    )
     from packages.core.session import _sessions
 
 
@@ -141,54 +147,58 @@ class TestConversationAPI:
         assert response.status_code == 200
         mock_session_manager.save_user_preferences.assert_called_once()
 
-    @patch("apps.server.main.integrate_clarifications_llm", new_callable=AsyncMock)
-    @patch("apps.server.main.plan_llm", new_callable=AsyncMock)
-    @patch("apps.server.main.prioritize_llm", new_callable=AsyncMock)
-    @patch("apps.server.main.estimate_llm", new_callable=AsyncMock)
-    @patch("apps.server.main.package_llm", new_callable=AsyncMock)
     def test_continue_conversation(
-        self,
-        mock_package,
-        mock_estimate,
-        mock_prioritize,
-        mock_plan,
-        mock_integrate,
-        client,
-        mock_session_manager,
-        sample_conversation_state,
-        sample_plan,
+        self, client, mock_session_manager, sample_conversation_state, sample_plan
     ):
         """Test continuing a conversation with answers"""
         # setup mocks
         sample_conversation_state.clarification_count = 1
         mock_session_manager.get_session.return_value = sample_conversation_state
 
-        mock_integrate.return_value = {
-            "goal": "Enriched goal",
-            "session_id": "test-session-123",
-        }
-        mock_plan.return_value = {"tasks": []}
-        mock_prioritize.return_value = {"tasks": []}
-        mock_estimate.return_value = {"tasks": []}
-        mock_package.return_value = {"sprints": sample_plan}
-
-        # make request
-        response = client.post(
-            "/conversation/continue",
-            json={
+        # mock all the agent functions
+        with (
+            patch(
+                "apps.server.main.integrate_clarifications_llm", new_callable=AsyncMock
+            ) as mock_integrate,
+            patch("apps.server.main.plan_llm", new_callable=AsyncMock) as mock_plan,
+            patch(
+                "apps.server.main.prioritize_llm", new_callable=AsyncMock
+            ) as mock_prioritize,
+            patch(
+                "apps.server.main.estimate_llm", new_callable=AsyncMock
+            ) as mock_estimate,
+            patch(
+                "apps.server.main.package_llm", new_callable=AsyncMock
+            ) as mock_package,
+        ):
+            mock_integrate.return_value = {
+                "goal": "Enriched goal",
                 "session_id": "test-session-123",
-                "answers": {"What platform?": "iOS", "Timeline?": "3 months"},
-            },
-        )
+            }
+            mock_plan.return_value = {"tasks": []}
+            mock_prioritize.return_value = {"tasks": []}
+            mock_estimate.return_value = {"tasks": []}
+            mock_package.return_value = {"sprints": sample_plan}
 
-        # verify response
-        assert response.status_code == 200
-        data = response.json()
-        assert data["type"] == "plan"
-        assert len(data["plan"]) == 1
+            # make request
+            response = client.post(
+                "/conversation/continue",
+                json={
+                    "session_id": "test-session-123",
+                    "answers": {"What platform?": "iOS", "Timeline?": "3 months"},
+                },
+            )
 
-        # verify conversation was updated
-        sample_conversation_state.add_message.assert_called()
+            # verify response
+            assert response.status_code == 200
+            data = response.json()
+            assert data["type"] == "plan"
+            assert len(data["plan"]) == 1
+
+            # verify conversation was updated
+            # note: add_message is a real method, not a mock, so can't use assert_called
+            # instead, verify messages were added by checking the conversation state
+            assert len(sample_conversation_state.messages) > 0
 
     def test_continue_nonexistent_session(self, client, mock_session_manager):
         """Test continuing a session that doesn't exist"""
@@ -206,7 +216,7 @@ class TestConversationAPI:
         self, client, mock_session_manager, sample_conversation_state
     ):
         """Test getting conversation status"""
-        sample_conversation_state.add_message("user", "Test message")
+        sample_conversation_state.add_message(MessageRole.user, "Test message")
         mock_session_manager.get_session.return_value = sample_conversation_state
 
         response = client.get("/conversation/test-session-123")

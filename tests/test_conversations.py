@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from packages.core.models import ConversationState, MessageRole, UserPreferences
 from packages.core.session import SessionManager, _sessions
 
@@ -22,6 +22,9 @@ def mock_weaviate():
         mock.query.get.return_value.with_near_text.return_value.with_limit.return_value.do.return_value = {
             "data": {"Get": {"ConversationHistory": []}}
         }
+        # set up data_object mock properly
+        mock.data_object = MagicMock()
+        mock.data_object.create = MagicMock()
         yield mock
 
 
@@ -52,9 +55,11 @@ class TestSessionManager:
         session = session_manager.create_session("Test goal")
         session_id = session.session_id
 
-        # manually expire session
+        # manually expire the session
         session.updated_at = (
-            datetime.utcnow() - session_manager.session_timeout - timedelta(seconds=1)
+            datetime.now(timezone.utc)
+            - session_manager.session_timeout
+            - timedelta(seconds=1)
         )
 
         retrieved = session_manager.get_session(session_id)
@@ -148,6 +153,8 @@ class TestConversationFlow:
 
         mock_session = MagicMock()
         mock_session.get_context.return_value = []
+        mock_session.clarification_count = 0
+        mock_session.max_clarifications = 2
         mock_session_mgr.get_session.return_value = mock_session
         mock_session_mgr.get_user_preferences.return_value = UserPreferences()
         mock_session_mgr.get_relevant_history.return_value = []

@@ -71,7 +71,7 @@ async def test_plan_llm(mock_mem, mock_chat, sample_tasks_json):
     """Test plan_llm function."""
     # setup mock
     mock_chat.return_value = sample_tasks_json
-    mock_mem.batch.add_data_objects = MagicMock()
+    mock_mem.batch.add_data_object = MagicMock()
 
     # call function
     result = await plan_llm({"goal": "Create a todo app"})
@@ -83,7 +83,7 @@ async def test_plan_llm(mock_mem, mock_chat, sample_tasks_json):
 
     # verify mock was called
     mock_chat.assert_called_once()
-    mock_mem.batch.add_data_objects.assert_called_once()
+    mock_mem.batch.add_data_object.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -137,7 +137,7 @@ async def test_package_llm(
     """Test package_llm function."""
     # setup mock
     mock_chat.return_value = sample_sprints_json
-    mock_mem.batch.add_data_objects = MagicMock()
+    mock_mem.batch.add_data_object = MagicMock()
 
     # call function
     result = await package_llm({"tasks": sample_tasks})
@@ -149,4 +149,4 @@ async def test_package_llm(
 
     # verify mock was called
     mock_chat.assert_called_once()
-    mock_mem.batch.add_data_objects.assert_called_once()
+    mock_mem.batch.add_data_object.assert_called_once()

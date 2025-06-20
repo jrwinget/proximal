@@ -316,4 +316,4 @@ class TestCLIErrorHandling:
         result = runner.invoke(app, ["plan", "Test", "--interactive"])
 
         assert result.exit_code == 1
-        assert "Could not connect to api server" in result.stdout
+        assert "Could not connect to API server" in result.stdout

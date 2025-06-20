@@ -161,8 +161,8 @@ async def plan_llm(state: dict) -> dict:
     tasks_data = json.loads(content)
     tasks = [Task.model_validate(task) for task in tasks_data]
 
-    # persist init plan in vector store
-    mem.batch.add_data_objects([{"role": "planner", "content": _json(tasks)}], "Memory")
+    # persist initial plan in vector store
+    mem.batch.add_data_object({"role": "planner", "content": _json(tasks)}, "Memory")
 
     return {"tasks": tasks}
 
@@ -231,9 +231,7 @@ async def package_llm(state: dict) -> dict:
     sprints = [Sprint.model_validate(sprint) for sprint in sprints_data]
 
     # persist final sprint plan
-    mem.batch.add_data_objects(
-        [{"role": "packager", "content": _json(sprints)}], "Memory"
-    )
+    mem.batch.add_data_object({"role": "packager", "content": _json(sprints)}, "Memory")
 
     # if in a session, complete it
     session_id = state.get("session_id")
