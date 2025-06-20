@@ -1,48 +1,92 @@
+from abc import ABC, abstractmethod
 from typing import Dict, Optional, List
 from datetime import datetime, timedelta, timezone
 import json
-from .models import ConversationState, ConversationMessage, MessageRole, UserPreferences
-from .memory import client as weaviate_client
 import os
 
-from abc import ABC, abstractmethod
+from .models import (
+    ConversationState,
+    ConversationMessage,
+    MessageRole,
+    UserPreferences,
+)
+from .memory import client as weaviate_client
 
-# Abstract session store interface
-class SessionStore(ABC):
-    @abstractmethod
-    def store_session(self, session_id: str, session: ConversationState):
-        pass
+# in-memory session store
+_sessions: Dict[str, ConversationState] = {}
 
-    @abstractmethod
-    def retrieve_session(self, session_id: str) -> Optional[ConversationState]:
-        pass
-
-    @abstractmethod
-    def delete_session(self, session_id: str):
-        pass
-
-# In-memory session store implementation
-class InMemorySessionStore(SessionStore):
-    def __init__(self):
-        self._sessions: Dict[str, ConversationState] = {}
-
-    def store_session(self, session_id: str, session: ConversationState):
-        self._sessions[session_id] = session
-
-    def retrieve_session(self, session_id: str) -> Optional[ConversationState]:
-        return self._sessions.get(session_id)
-
-    def delete_session(self, session_id: str):
-        if session_id in self._sessions:
-            del self._sessions[session_id]
-
+# single-user preferences cache
 _preferences_cache: Optional[UserPreferences] = None
 
-class SessionManager:
-    """Manages conversation sessions with hybrid memory approach"""
 
-    def __init__(self, session_store: SessionStore = None):
-        self.session_store = session_store or InMemorySessionStore()
+class SessionStore(ABC):
+    """abstract interface for session persistence backends"""
+
+    @abstractmethod
+    def get(self, session_id: str) -> Optional[ConversationState]: ...
+
+    @abstractmethod
+    def save(self, session: ConversationState) -> None: ...
+
+    @abstractmethod
+    def delete(self, session_id: str) -> None: ...
+
+    @abstractmethod
+    def all(self) -> Dict[str, ConversationState]: ...
+
+
+class InMemoryStore(SessionStore):
+    """In-memory session store using module-level dict"""
+
+    def get(self, session_id: str) -> Optional[ConversationState]:
+        return _sessions.get(session_id)
+
+    def save(self, session: ConversationState) -> None:
+        _sessions[session.session_id] = session
+
+    def delete(self, session_id: str) -> None:
+        _sessions.pop(session_id, None)
+
+    def all(self) -> Dict[str, ConversationState]:
+        return dict(_sessions)
+
+
+class RedisStore(SessionStore):
+    """Redis session store (requires Redis and pickle)"""
+
+    def __init__(self, url: str):
+        import redis
+        import pickle
+
+        self.client = redis.from_url(url)
+        self.pickle = pickle
+
+    def get(self, session_id: str) -> Optional[ConversationState]:
+        data = self.client.get(session_id)
+        return self.pickle.loads(data) if data else None
+
+    def save(self, session: ConversationState) -> None:
+        data = self.pickle.dumps(session)
+        self.client.set(session.session_id, data)
+
+    def delete(self, session_id: str) -> None:
+        self.client.delete(session_id)
+
+    def all(self) -> Dict[str, ConversationState]:
+        result = {}
+        for key in self.client.keys():
+            raw = self.client.get(key)
+            result[key.decode()] = self.pickle.loads(raw)
+        return result
+
+
+class SessionManager:
+    """Manages conversation sessions with pluggable store"""
+
+    def __init__(self, store: SessionStore = None):
+        # default to in-memory store
+        self.store = store or InMemoryStore()
+        self.sessions = _sessions
         self.session_timeout = timedelta(hours=1)
         self._ensure_weaviate_schemas()
 
@@ -61,8 +105,8 @@ class SessionManager:
                     "properties": [
                         {"name": "session_id", "dataType": ["text"]},
                         {"name": "goal", "dataType": ["text"]},
-                        {"name": "messages", "dataType": ["text"]},  # JSON
-                        {"name": "final_plan", "dataType": ["text"]},  # JSON
+                        {"name": "messages", "dataType": ["text"]},
+                        {"name": "final_plan", "dataType": ["text"]},
                         {"name": "created_at", "dataType": ["date"]},
                     ],
                 }
@@ -74,7 +118,7 @@ class SessionManager:
                     "class": "UserPreferences",
                     "properties": [
                         {"name": "user_id", "dataType": ["text"]},
-                        {"name": "preferences", "dataType": ["text"]},  # JSON
+                        {"name": "preferences", "dataType": ["text"]},
                         {"name": "updated_at", "dataType": ["date"]},
                     ],
                 }
@@ -83,17 +127,17 @@ class SessionManager:
     def create_session(self, initial_goal: str) -> ConversationState:
         """Create a new conversation session"""
         session = ConversationState(goal=initial_goal)
-        self.sessions[session.session_id] = session
+        self.store.save(session)
         return session
 
     def get_session(self, session_id: str) -> Optional[ConversationState]:
         """Retrieve an active session"""
-        session = self.sessions.get(session_id)
+        session = self.store.get(session_id)
         if session and self._is_session_valid(session):
             return session
-        elif session:
+        if session:
             # clean up expired session
-            del self.sessions[session_id]
+            self.store.delete(session_id)
         return None
 
     def _is_session_valid(self, session: ConversationState) -> bool:
@@ -106,14 +150,17 @@ class SessionManager:
     ) -> Optional[ConversationState]:
         """Add a message to the session"""
         session = self.get_session(session_id)
-        if session:
-            session.add_message(role, content)
-            if role == MessageRole.user:
-                session.clarification_count += 1
-            return session
-        return None
+        if not session:
+            return None
+        session.add_message(role, content)
+        if role == MessageRole.user:
+            session.clarification_count += 1
+        self.store.save(session)
+        return session
 
-    def complete_session(self, session_id: str, final_plan: Optional[List] = None):
+    def complete_session(
+        self, session_id: str, final_plan: Optional[List] = None
+    ) -> None:
         """Mark session as complete and persist to Weaviate"""
         session = self.get_session(session_id)
         if not session:
@@ -121,17 +168,17 @@ class SessionManager:
 
         session.status = "completed"
 
-        # skip weaviate in test mode
         if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+            # clean up in-memory only
+            self.store.delete(session_id)
             return
 
-        # persist to weaviate for long-term memory
-        # convert messages to JSON-serializable format
+        # prepare historical record
         messages_data = []
         for msg in session.messages:
-            msg_dict = msg.model_dump()
-            msg_dict["timestamp"] = msg.timestamp.isoformat()
-            messages_data.append(msg_dict)
+            d = msg.model_dump()
+            d["timestamp"] = msg.timestamp.isoformat()
+            messages_data.append(d)
 
         history_data = {
             "session_id": session.session_id,
@@ -142,17 +189,17 @@ class SessionManager:
         }
 
         weaviate_client.data_object.create(
-            data_object=history_data, class_name="ConversationHistory"
+            data_object=history_data,
+            class_name="ConversationHistory",
         )
 
-        # clean up in-memory session
-        del self.sessions[session_id]
+        # clean up session store
+        self.store.delete(session_id)
 
     def get_relevant_history(self, query: str, limit: int = 3) -> List[Dict]:
         """Retrieve relevant past conversations using vector search"""
         if os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return []
-
         try:
             result = (
                 weaviate_client.query.get(
@@ -162,20 +209,23 @@ class SessionManager:
                 .with_limit(limit)
                 .do()
             )
-
-            histories = (
+            entries = (
                 result.get("data", {}).get("Get", {}).get("ConversationHistory", [])
             )
-            return [
-                {
-                    "goal": h["goal"],
-                    "messages": json.loads(h["messages"]) if h.get("messages") else [],
-                    "plan": json.loads(h["final_plan"])
-                    if h.get("final_plan")
-                    else None,
-                }
-                for h in histories
-            ]
+            out = []
+            for h in entries:
+                out.append(
+                    {
+                        "goal": h["goal"],
+                        "messages": json.loads(h["messages"])
+                        if h.get("messages")
+                        else [],
+                        "plan": json.loads(h["final_plan"])
+                        if h.get("final_plan")
+                        else None,
+                    }
+                )
+            return out
         except Exception:
             return []
 
@@ -183,55 +233,49 @@ class SessionManager:
         """Get user preferences from cache or Weaviate"""
         global _preferences_cache
 
-        # return cached if available
         if _preferences_cache and _preferences_cache.user_id == user_id:
             return _preferences_cache
 
-        # skip weaviate in test mode
         if os.getenv("SKIP_WEAVIATE_CONNECTION"):
             _preferences_cache = UserPreferences(user_id=user_id)
             return _preferences_cache
 
-        # try to fetch from weaviate
         try:
             result = (
                 weaviate_client.query.get("UserPreferences", ["user_id", "preferences"])
                 .with_where(
-                    {"path": ["user_id"], "operator": "Equal", "valueText": user_id}
+                    {
+                        "path": ["user_id"],
+                        "operator": "Equal",
+                        "valueText": user_id,
+                    }
                 )
                 .do()
             )
-
-            prefs_data = (
+            prefs_list = (
                 result.get("data", {}).get("Get", {}).get("UserPreferences", [])
             )
-            if prefs_data:
-                pref_json = json.loads(prefs_data[0]["preferences"])
-                _preferences_cache = UserPreferences(**pref_json)
+            if prefs_list:
+                data = json.loads(prefs_list[0]["preferences"])
+                _preferences_cache = UserPreferences(**data)
                 return _preferences_cache
         except Exception:
             pass
 
-        # defaults if not found
         _preferences_cache = UserPreferences(user_id=user_id)
         return _preferences_cache
 
     def save_user_preferences(self, preferences: UserPreferences):
-        """
-        Save user preferences to Weaviate and cache in memory.
-        """
+        """Save user preferences to Weaviate and cache in memory"""
         global _preferences_cache
-        # cache the latest preferences object (single-user model)
         _preferences_cache = preferences
 
-        # skip remote persistence if flagged
         if os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return
 
         pref_data = preferences.model_dump()
         pref_data["updated_at"] = preferences.updated_at.isoformat()
 
-        # always attempt to persist (weaviate handles duplicates/errors)
         try:
             weaviate_client.data_object.create(
                 data_object=pref_data,
