@@ -30,6 +30,8 @@ and create comprehensive action plans with priority levels and time estimates.
 - **Dependency Mapping**: Identifies and visualizes task relationships
 - **Priority Tagging**: Assigns priority levels (P0-P3) based on context and
   deadlines
+- **Task Breakdown**: Breaks large tasks into subtasks or Pomodoro sessions
+- **Memory & Context**: Remembers past projects and user preferences
 
 ### 🔧 Technical Features
 - **Multi-Provider Support**: Works with OpenAI, Anthropic, and Ollama LLMs

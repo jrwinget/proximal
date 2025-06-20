@@ -22,7 +22,9 @@ dependencies = [
   "whisper-timestamped @ git+https://github.com/linto-ai/whisper-timestamped",
   "anthropic>=0.18.0",
   "httpx>=0.24.0",
-  "rich>=13.0.0"
+  "rich>=13.0.0",
+  "redis>=5.0.0",
+  "pexpect>=4.9.0"
 ]
 
 [project.optional-dependencies]

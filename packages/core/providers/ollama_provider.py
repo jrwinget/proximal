@@ -1,24 +1,28 @@
 import httpx
-from typing import List, Dict, Any
+from typing import Any
 from ..settings import get_settings
 
 _SETTINGS = get_settings()
 
 
 class OllamaChat:
-    """
-    Minimal async wrapper that behaves like OpenAI ChatCompletion.create().
-    """
-
-    _url = f"{_SETTINGS.ollama_base_url}/v1/chat/completions"
     _model = _SETTINGS.ollama_model
 
     @classmethod
-    async def acomplete(cls, messages: List[Dict[str, str]], tools=None) -> str:
-        payload: Dict[str, Any] = {"model": cls._model, "messages": messages}
+    def _get_url(cls) -> str:
+        base = _SETTINGS.ollama_base_url
+        if not base.startswith(("http://", "https://")):
+            base = f"http://{base}"
+        return f"{base}/v1/chat/completions"
+
+    @classmethod
+    async def acomplete(cls, messages: list[dict], tools: Any = None) -> str:
+        url = cls._get_url()
+        payload = {"model": cls._model, "messages": messages}
         if tools:
             payload["tools"] = tools
-        async with httpx.AsyncClient(timeout=120) as client:
-            r = await client.post(cls._url, json=payload)
-            r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"]
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]

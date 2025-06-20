@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 if os.getenv("SKIP_WEAVIATE_CONNECTION"):
     client = MagicMock()
     client.batch = MagicMock()
-    client.batch.add_data_objects = MagicMock()
+    client.batch.add_data_object = MagicMock()
 else:
     client = weaviate.Client("http://localhost:8080")
 
