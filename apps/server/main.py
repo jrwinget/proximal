@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Literal
 from .pipeline import DIRECT_PIPELINE, INTERACTIVE_PIPELINE
 from packages.core.session import session_manager
 from packages.core.models import (
@@ -37,7 +37,7 @@ class ConversationContinue(BaseModel):
 class TaskBreakdownRequest(BaseModel):
     task_id: Optional[str] = None
     task: Optional[Task] = None  # full task object if not fetching by ID
-    breakdown_type: str = "subtasks"  # "subtasks" or "pomodoros"
+    breakdown_type: Literal["subtasks", "pomodoros"]  # "subtasks" or "pomodoros"
 
 
 class ConversationResponse(BaseModel):
