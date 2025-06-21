@@ -28,8 +28,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pre-commit", "mypy", "ipykernel"]
-voice = ["TTS>=0.0.14,<0.1.0"]  # only if audio I/O needed
+dev   = ["pre-commit", "mypy", "ipykernel"]
+voice = [
+  "TTS>=0.0.14,<0.1.0; python_version < '3.9'"
+]
 
 [tool.setuptools]
 package-dir = {"" = "packages"}
