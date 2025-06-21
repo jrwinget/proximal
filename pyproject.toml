@@ -1,3 +1,11 @@
+[tool.poetry]
+name = "trellis-agent"
+version = "0.1.0"
+packages = [
+  { include = "apps", from = "." },
+  { include = "packages", from = "." }
+]
+
 [project]
 name = "trellis-agent"
 version = "0.1.0"
@@ -28,13 +36,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev   = ["pre-commit", "mypy", "ipykernel"]
+dev = [
+  "pre-commit",
+  "mypy",
+  "ipykernel"
+]
 voice = [
   "TTS>=0.0.14,<0.1.0; python_version < '3.9'"
 ]
 
 [tool.setuptools]
-package-dir = {"" = "packages"}
+package-dir = { "" = "packages" }
 
 [tool.setuptools.packages.find]
 where = ["packages"]
