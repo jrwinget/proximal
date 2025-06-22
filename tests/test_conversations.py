@@ -2,8 +2,8 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import json
 from datetime import datetime, timedelta, timezone
-from packages.core.models import ConversationState, MessageRole, UserPreferences
-from packages.core.session import SessionManager, _sessions
+from trellis.core.models import ConversationState, MessageRole, UserPreferences
+from trellis.core.session import SessionManager, _sessions
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def session_manager():
 @pytest.fixture
 def mock_weaviate():
     """Mock Weaviate client for tests"""
-    with patch("packages.core.session.weaviate_client") as mock:
+    with patch("trellis.core.session.weaviate_client") as mock:
         mock.schema.get.return_value = {"classes": []}
         mock.query.get.return_value.with_near_text.return_value.with_limit.return_value.do.return_value = {
             "data": {"Get": {"ConversationHistory": []}}
@@ -137,11 +137,11 @@ class TestSessionManager:
 
 @pytest.mark.asyncio
 class TestConversationFlow:
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+    @patch("trellis.core.agents.session_manager")
     async def test_clarify_llm_needs_clarification(self, mock_session_mgr, mock_chat):
         """Test clarify_llm when clarification is needed"""
-        from packages.core.agents import clarify_llm
+        from trellis.core.agents import clarify_llm
 
         # setup mocks
         mock_chat.return_value = json.dumps(
@@ -168,11 +168,11 @@ class TestConversationFlow:
         assert len(result["clarification_questions"]) == 2
         assert "What platform?" in result["clarification_questions"]
 
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+    @patch("trellis.core.agents.session_manager")
     async def test_clarify_llm_no_clarification(self, mock_session_mgr, mock_chat):
         """Test clarify_llm when no clarification is needed"""
-        from packages.core.agents import clarify_llm
+        from trellis.core.agents import clarify_llm
 
         # setup mocks
         mock_chat.return_value = json.dumps(
@@ -191,11 +191,11 @@ class TestConversationFlow:
         assert result["needs_clarification"] is False
         assert result["clarification_questions"] == []
 
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+    @patch("trellis.core.agents.session_manager")
     async def test_integrate_clarifications(self, mock_session_mgr, mock_chat):
         """Test integrating clarification answers into enriched goal"""
-        from packages.core.agents import integrate_clarifications_llm
+        from trellis.core.agents import integrate_clarifications_llm
 
         # setup mock session with q&a
         mock_session = ConversationState(goal="Build an app")
@@ -219,11 +219,11 @@ class TestConversationFlow:
         assert "SwiftUI" in result["goal"]
         assert result["original_goal"] == "Build an app"
 
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+    @patch("trellis.core.agents.session_manager")
     async def test_plan_with_memory_context(self, mock_session_mgr, mock_chat):
         """Test that plan_llm uses memory context"""
-        from packages.core.agents import plan_llm
+        from trellis.core.agents import plan_llm
 
         # setup mocks
         mock_session_mgr.get_user_preferences.return_value = UserPreferences(
@@ -267,10 +267,10 @@ class TestConversationFlow:
         assert "casual tone" in prompt
         assert "similar past projects" in prompt
 
-    @patch("packages.core.agents.breakdown_task_llm")
+    @patch("trellis.core.agents.breakdown_task_llm")
     async def test_task_breakdown_subtasks(self, mock_breakdown):
         """Test breaking down a task into subtasks"""
-        from packages.core.models import Task, Priority
+        from trellis.core.models import Task, Priority
 
         task = Task(
             title="Create login page",

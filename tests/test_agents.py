@@ -3,7 +3,8 @@ from unittest.mock import AsyncMock, patch, MagicMock
 import json
 from datetime import date, timedelta
 from packages.core.agents import plan_llm, prioritize_llm, estimate_llm, package_llm
-from packages.core.models import Task, Sprint, Priority
+from trellis.core.agents import plan_llm, prioritize_llm, estimate_llm, package_llm
+from trellis.core.models import Task, Sprint, Priority
 
 
 class DateEncoder(json.JSONEncoder):
@@ -65,8 +66,8 @@ def sample_sprints_json(sample_sprints):
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-@patch("packages.core.agents.mem", new_callable=MagicMock)
+@patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+@patch("trellis.core.agents.mem", new_callable=MagicMock)
 async def test_plan_llm(mock_mem, mock_chat, sample_tasks_json):
     """Test plan_llm function."""
     # setup mock
@@ -87,7 +88,7 @@ async def test_plan_llm(mock_mem, mock_chat, sample_tasks_json):
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
+@patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
 async def test_prioritize_llm(mock_chat, sample_tasks, sample_tasks_json):
     """Test prioritize_llm function."""
     # setup mock
@@ -106,7 +107,7 @@ async def test_prioritize_llm(mock_chat, sample_tasks, sample_tasks_json):
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
+@patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
 async def test_estimate_llm(mock_chat, sample_tasks, sample_tasks_json):
     """Test estimate_llm function."""
     # setup mock
@@ -126,10 +127,10 @@ async def test_estimate_llm(mock_chat, sample_tasks, sample_tasks_json):
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-@patch("packages.core.agents.mem", new_callable=MagicMock)
+@patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+@patch("trellis.core.agents.mem", new_callable=MagicMock)
 @patch(
-    "packages.core.agents._json", return_value="{}"
+    "trellis.core.agents._json", return_value="{}"
 )  # mock _json to avoid date serialization issues
 async def test_package_llm(
     mock_json, mock_mem, mock_chat, sample_tasks, sample_sprints_json

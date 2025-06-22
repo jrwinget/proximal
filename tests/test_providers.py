@@ -9,16 +9,16 @@ sys.path.insert(0, str(project_root))
 
 @pytest.mark.asyncio
 @patch(
-    "packages.core.providers.ollama_provider.OllamaChat.acomplete",
+    "trellis.core.providers.ollama_provider.OllamaChat.acomplete",
     new_callable=AsyncMock,
 )
-@patch("packages.core.providers.openai_provider.acomplete", new_callable=AsyncMock)
-@patch("packages.core.providers.anthropic_provider.acomplete", new_callable=AsyncMock)
+@patch("trellis.core.providers.openai_provider.acomplete", new_callable=AsyncMock)
+@patch("trellis.core.providers.anthropic_provider.acomplete", new_callable=AsyncMock)
 async def test_chat_basic(mock_anthropic, mock_openai, mock_ollama):
     """Test that the chat function returns a string."""
     # import here to ensure any patches are applied first
-    from packages.core.providers.router import chat
-    from packages.core.settings import get_settings
+    from trellis.core.providers.router import chat
+    from trellis.core.settings import get_settings
 
     # get current provider from settings
     _SETTINGS = get_settings()
@@ -54,11 +54,11 @@ async def test_chat_basic(mock_anthropic, mock_openai, mock_ollama):
 async def test_chat_content():
     """Test that the chat function processes content correctly."""
     # import router module
-    from packages.core.providers.router import chat
+    from trellis.core.providers.router import chat
 
     # create a mock for the chat function
     with patch(
-        "packages.core.providers.router.chat", new_callable=AsyncMock
+        "trellis.core.providers.router.chat", new_callable=AsyncMock
     ) as mock_chat:
         mock_chat.return_value = "Test response"
 

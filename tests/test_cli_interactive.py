@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from apps.cli import app
+from trellis.apps.cli import app
 
 
 @pytest.fixture
@@ -54,8 +54,8 @@ def interactive_conversation_flow():
 
 
 class TestInteractivePlanning:
-    @patch("apps.cli.httpx.post")
-    @patch("apps.cli.Prompt.ask")
+    @patch("trellis.apps.cli.httpx.post")
+    @patch("trellis.apps.cli.Prompt.ask")
     def test_interactive_planning_flow(
         self, mock_prompt, mock_post, runner, interactive_conversation_flow
     ):
@@ -98,7 +98,7 @@ class TestInteractivePlanning:
         assert "What platform do you want to target?" in answers
         assert answers["What platform do you want to target?"] == "iOS with SwiftUI"
 
-    @patch("apps.cli.httpx.post")
+    @patch("trellis.apps.cli.httpx.post")
     def test_interactive_no_clarification_needed(self, mock_post, runner):
         """Test interactive mode when no clarification is needed"""
         # setup mock - goes directly to plan
@@ -139,7 +139,7 @@ class TestInteractivePlanning:
 
 
 class TestTaskBreakdown:
-    @patch("apps.cli.httpx.post")
+    @patch("trellis.apps.cli.httpx.post")
     def test_breakdown_subtasks(self, mock_post, runner):
         """Test breaking down a task into subtasks"""
         mock_response = MagicMock()
@@ -185,7 +185,7 @@ class TestTaskBreakdown:
         assert "Implement form" in result.stdout
         assert "Total estimated hours: 5" in result.stdout
 
-    @patch("apps.cli.httpx.post")
+    @patch("trellis.apps.cli.httpx.post")
     def test_breakdown_pomodoros(self, mock_post, runner):
         """Test breaking down a task into pomodoro sessions"""
         mock_response = MagicMock()
@@ -220,7 +220,7 @@ class TestTaskBreakdown:
 
 
 class TestPreferences:
-    @patch("apps.cli.httpx.get")
+    @patch("trellis.apps.cli.httpx.get")
     def test_show_preferences(self, mock_get, runner):
         """Test showing current preferences"""
         mock_response = MagicMock()
@@ -247,8 +247,8 @@ class TestPreferences:
         assert "Work Hours/Week" in result.stdout
         assert "40" in result.stdout
 
-    @patch("apps.cli.httpx.put")
-    @patch("apps.cli.httpx.get")
+    @patch("trellis.apps.cli.httpx.put")
+    @patch("trellis.apps.cli.httpx.get")
     def test_update_preferences(self, mock_get, mock_put, runner):
         """Test updating preferences"""
         # mock PUT response
@@ -296,7 +296,7 @@ class TestPreferences:
 
 
 class TestCLIErrorHandling:
-    @patch("apps.cli.httpx.post")
+    @patch("trellis.apps.cli.httpx.post")
     def test_keyboard_interrupt_handling(self, mock_post, runner):
         """Test that Ctrl+C is handled gracefully"""
         mock_post.side_effect = KeyboardInterrupt()
@@ -306,7 +306,7 @@ class TestCLIErrorHandling:
         assert result.exit_code == 0
         assert "cancelled by user" in result.stdout.lower()
 
-    @patch("apps.cli.httpx.post")
+    @patch("trellis.apps.cli.httpx.post")
     def test_connection_error_interactive(self, mock_post, runner):
         """Test connection error handling in interactive mode"""
         import httpx

@@ -2,7 +2,6 @@
 name = "proximal"
 version = "0.1.0"
 package-mode = false
-workspace = { members = ["core", "trellis", "guardian", "shared"] }
 
 [project]
 name = "trellis-agent"
@@ -15,11 +14,11 @@ readme = "README.md"
 python = "^3.12"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.0.297"
-pytest = "^8.2"
-pytest-asyncio = "^0.21.0"
-pytest-cov = "^4.1.0"
-pre-commit = "^3.7.0"
+ruff = ">=0.12.0"
+pytest = ">=8.2"
+pytest-asyncio = ">=0.21.0"
+pytest-cov = ">=4.1.0"
+pre-commit = ">=3.7.0"
 
 [tool.ruff]
 select = ["ALL"]
@@ -28,6 +27,7 @@ ignore = ["ALL"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
+workspace = { members = ["core", "trellis", "guardian", "shared"] }
 
 [build-system]
 requires = ["poetry-core"]

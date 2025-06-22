@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "trellis"
+version = "0.1.0"
+packages = [{ include = "trellis" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+openai-agents = ">=0.0.19"
+langgraph = ">=0.4.8"
+weaviate-client = ">=3.26.7,<4.0.0"
+fastapi = {extras = ["all"], version = ">=0.115.13"}
+pydantic = ">=2.11"
+python-dotenv = ">=1.0"
+ruff = ">=0.0.297"
+pytest = ">=8.2"
+pytest-asyncio = ">=0.21.0"
+pytest-cov = ">=4.1.0"
+pygments = ">=2.15.0"
+typer = {extras = ["all"], version = ">=0.4.0"}
+whisper-timestamped = {git = "https://github.com/linto-ai/whisper-timestamped"}
+anthropic = ">=0.18.0"
+httpx = ">=0.24.0"
+rich = ">=13.0.0"
+redis = ">=5.0.0"
+pexpect = ">=4.9.0"
+
+[tool.poetry.scripts]
+trellis = "trellis.apps.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -9,16 +9,16 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 # mock session manager before importing app
-with patch("packages.core.session.weaviate_client"):
-    from apps.server.main import app
-    from packages.core.models import (
+with patch("trellis.core.session.weaviate_client"):
+    from trellis.server.main import app
+    from trellis.core.models import (
         ConversationState,
         Sprint,
         Task,
         Priority,
         MessageRole,
     )
-    from packages.core.session import _sessions
+    from trellis.core.session import _sessions
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def client():
 @pytest.fixture
 def mock_session_manager():
     """Mock the session manager"""
-    with patch("apps.server.main.session_manager") as mock:
+    with patch("trellis.server.main.session_manager") as mock:
         yield mock
 
 
@@ -64,7 +64,7 @@ def sample_plan():
 
 
 class TestConversationAPI:
-    @patch("apps.server.main.INTERACTIVE_PIPELINE.ainvoke", new_callable=AsyncMock)
+    @patch("trellis.server.main.INTERACTIVE_PIPELINE.ainvoke", new_callable=AsyncMock)
     def test_start_conversation_with_questions(
         self, mock_pipeline, client, mock_session_manager, sample_conversation_state
     ):
@@ -92,7 +92,7 @@ class TestConversationAPI:
         assert len(data["questions"]) == 2
         assert "What platform?" in data["questions"]
 
-    @patch("apps.server.main.INTERACTIVE_PIPELINE.ainvoke", new_callable=AsyncMock)
+    @patch("trellis.server.main.INTERACTIVE_PIPELINE.ainvoke", new_callable=AsyncMock)
     def test_start_conversation_direct_to_plan(
         self,
         mock_pipeline,
@@ -158,17 +158,17 @@ class TestConversationAPI:
         # mock all the agent functions
         with (
             patch(
-                "apps.server.main.integrate_clarifications_llm", new_callable=AsyncMock
+                "trellis.server.main.integrate_clarifications_llm", new_callable=AsyncMock
             ) as mock_integrate,
-            patch("apps.server.main.plan_llm", new_callable=AsyncMock) as mock_plan,
+            patch("trellis.server.main.plan_llm", new_callable=AsyncMock) as mock_plan,
             patch(
-                "apps.server.main.prioritize_llm", new_callable=AsyncMock
+                "trellis.server.main.prioritize_llm", new_callable=AsyncMock
             ) as mock_prioritize,
             patch(
-                "apps.server.main.estimate_llm", new_callable=AsyncMock
+                "trellis.server.main.estimate_llm", new_callable=AsyncMock
             ) as mock_estimate,
             patch(
-                "apps.server.main.package_llm", new_callable=AsyncMock
+                "trellis.server.main.package_llm", new_callable=AsyncMock
             ) as mock_package,
         ):
             mock_integrate.return_value = {
@@ -229,7 +229,7 @@ class TestConversationAPI:
 
 
 class TestTaskBreakdownAPI:
-    @patch("apps.server.main.breakdown_task_llm", new_callable=AsyncMock)
+    @patch("trellis.server.main.breakdown_task_llm", new_callable=AsyncMock)
     def test_breakdown_task_subtasks(self, mock_breakdown, client):
         """Test breaking down a task into subtasks"""
         mock_breakdown.return_value = [
@@ -261,7 +261,7 @@ class TestTaskBreakdownAPI:
         assert len(data["breakdown"]) == 1
         assert data["breakdown"][0]["title"] == "Design UI"
 
-    @patch("apps.server.main.breakdown_task_llm", new_callable=AsyncMock)
+    @patch("trellis.server.main.breakdown_task_llm", new_callable=AsyncMock)
     def test_breakdown_task_pomodoros(self, mock_breakdown, client):
         """Test breaking down a task into pomodoros"""
         mock_breakdown.return_value = [

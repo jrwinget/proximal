@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 import json
 import sys
 from pathlib import Path
@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from apps.cli import app
+from trellis.apps.cli import app
 
 
 @pytest.fixture
@@ -54,7 +54,7 @@ def test_version(runner):
     assert "Trellis CLI" in result.stdout
 
 
-@patch("apps.cli.httpx.post")
+@patch("trellis.apps.cli.httpx.post")
 def test_plan_command_success(mock_post, runner, sample_plan_data):
     """Test the plan command with a successful API response."""
     # setup mock response
@@ -77,7 +77,7 @@ def test_plan_command_success(mock_post, runner, sample_plan_data):
     assert kwargs["json"] == {"message": "Create a todo app"}
 
 
-@patch("apps.cli.httpx.post")
+@patch("trellis.apps.cli.httpx.post")
 def test_plan_command_with_output_file(mock_post, runner, sample_plan_data, tmp_path):
     """Test the plan command with output to a file."""
     # setup mock response
@@ -107,7 +107,7 @@ def test_plan_command_with_output_file(mock_post, runner, sample_plan_data, tmp_
     assert saved_data == sample_plan_data
 
 
-@patch("apps.cli.httpx.post")
+@patch("trellis.apps.cli.httpx.post")
 def test_plan_command_api_error(mock_post, runner):
     """Test the plan command with an API error."""
     # setup mock to raise an exception
@@ -127,7 +127,7 @@ def test_plan_command_api_error(mock_post, runner):
     assert "Error: HTTP 500" in result.stdout
 
 
-@patch("apps.cli.httpx.post")
+@patch("trellis.apps.cli.httpx.post")
 def test_plan_command_connection_error(mock_post, runner):
     """Test the plan command with a connection error."""
     # setup mock to raise a connection exception
@@ -141,3 +141,19 @@ def test_plan_command_connection_error(mock_post, runner):
     # verify result
     assert result.exit_code == 1
     assert "Could not connect to API server" in result.stdout
+
+
+@patch(
+    "shared.automatisch_client.AutomatischClient.create_flow", new_callable=AsyncMock
+)
+@patch("trellis.apps.cli.httpx.post")
+def test_plan_command_sync(mock_post, mock_create, runner, sample_plan_data):
+    mock_response = MagicMock()
+    mock_response.json.return_value = sample_plan_data
+    mock_response.raise_for_status.return_value = None
+    mock_post.return_value = mock_response
+
+    result = runner.invoke(app, ["plan", "Idea", "--sync", "--no-pretty"], input="y\n")
+
+    assert result.exit_code == 0
+    mock_create.assert_called_once()

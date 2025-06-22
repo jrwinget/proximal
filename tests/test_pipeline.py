@@ -8,15 +8,15 @@ sys.path.insert(0, str(project_root))
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-@patch("packages.core.agents.mem", new_callable=MagicMock)
+@patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
+@patch("trellis.core.agents.mem", new_callable=MagicMock)
 @patch(
-    "packages.core.agents._json", return_value="{}"
+    "trellis.core.agents._json", return_value="{}"
 )  # mock _json to avoid date serialization issues
 async def test_pipeline_flow(mock_json, mock_mem, mock_chat):
     """Test that pipeline flows through all expected steps."""
     # import here to ensure patches are applied first
-    from apps.server.pipeline import PIPELINE
+    from trellis.server.pipeline import PIPELINE
 
     # setup mocks
     mock_chat.side_effect = [

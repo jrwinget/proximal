@@ -1,0 +1,12 @@
+[tool.poetry]
+name = "proximal-shared"
+version = "0.1.0"
+packages = [{ include = "shared" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+httpx = "^0.24.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

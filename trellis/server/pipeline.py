@@ -1,7 +1,7 @@
 from typing import List, TypedDict, Annotated, Optional
 from langgraph.graph import StateGraph, START, END
-from packages.core.models import Sprint, Task
-from packages.core.agents import (
+from trellis.core.models import Sprint, Task
+from trellis.core.agents import (
     plan_llm,
     prioritize_llm,
     estimate_llm,

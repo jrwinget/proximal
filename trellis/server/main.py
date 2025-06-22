@@ -2,15 +2,15 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Union, Literal
 from .pipeline import DIRECT_PIPELINE, INTERACTIVE_PIPELINE
-from packages.core.session import session_manager
-from packages.core.models import (
+from trellis.core.session import session_manager
+from trellis.core.models import (
     ConversationState,
     MessageRole,
     UserPreferences,
     Sprint,
     Task,
 )
-from packages.core.agents import (
+from trellis.core.agents import (
     breakdown_task_llm,
     integrate_clarifications_llm,
     plan_llm,
@@ -201,7 +201,7 @@ def start():
     import uvicorn
 
     uvicorn.run(
-        "apps.server.main:app",
+        "trellis.server.main:app",
         host="0.0.0.0",
         port=7315,
         reload=True,

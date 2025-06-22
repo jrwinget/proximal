@@ -28,6 +28,7 @@ def plan(
     interactive: bool = typer.Option(
         False, "--interactive", "-i", help="Enable interactive clarification mode"
     ),
+    sync: bool = typer.Option(False, help="Sync plan to Automatisch"),
 ):
     """
     Transform a goal or idea into a structured project plan with tasks and sprints.
@@ -60,6 +61,13 @@ def plan(
             _display_pretty_plan(plan_data)
         else:
             console.print(json.dumps(plan_data, indent=2))
+
+        if sync and Confirm.ask("Sync plan to Automatisch?"):
+            import asyncio
+            from shared.automatisch_client import AutomatischClient
+
+            client = AutomatischClient()
+            asyncio.run(client.create_flow({"plan": plan_data}))
 
     except httpx.HTTPStatusError as e:
         console.print(
@@ -148,7 +156,7 @@ def breakdown(
     This helps with executive function by providing clear next actions.
     """
     # create a task object
-    from packages.core.models import Task, Priority
+    from trellis.core.models import Task, Priority
 
     task = Task(
         title=task_title,
