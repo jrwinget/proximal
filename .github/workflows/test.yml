@@ -2,7 +2,7 @@ name: Tests
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
   pull_request:
     branches: [ main ]
 
@@ -24,11 +24,12 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        ./scripts/bootstrap.sh
     
-    - name: Run tests
+    - name: Lint and Test
       run: |
-        pytest --cov=packages --cov-report=xml
+        ruff .
+        pytest -q
       env:
         TRELLIS_PROVIDER: ollama
         OLLAMA_BASE_URL: http://localhost:8080
