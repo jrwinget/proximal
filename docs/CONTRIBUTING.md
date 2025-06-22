@@ -89,7 +89,7 @@ pytest
 pytest tests/test_agents.py
 
 # Run with coverage
-pytest --cov=packages --cov-report=html
+pytest --cov=trellis --cov-report=html
 
 # Run only fast tests (skip integration tests)
 pytest -m "not integration"
@@ -106,7 +106,7 @@ pytest -m "not integration"
 Example test structure:
 ```python
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
+@patch("trellis.core.agents.chat_model", new_callable=AsyncMock)
 async def test_agent_transforms_vague_input_into_structured_plan(mock_chat):
     """Test that vague project descriptions produce structured outputs."""
     # Setup mock
@@ -130,13 +130,10 @@ trellis/
 │   │   ├── main.py     # API endpoints
 │   │   └── pipeline.py # LangGraph pipeline
 │   └── cli.py          # Command-line interface
-├── packages/           # Core packages
-│   └── core/           # Core functionality
-│       ├── providers/  # LLM providers
-│       ├── agents.py   # Agent functions
-│       ├── memory.py   # Vector storage
-│       ├── models.py   # Data models
-│       └── settings.py # Configuration
+├── core/               # Shared infrastructure
+├── trellis/            # Planner agent
+├── guardian/           # Well-being sentinel
+├── shared/             # Utilities and Automatisch client
 ├── tests/              # Test suite
 └── docs/               # Documentation
 ```

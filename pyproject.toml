@@ -3,6 +3,9 @@ name = "proximal"
 version = "0.1.0"
 package-mode = false
 
+[tool.poetry.workspace]
+members = ["core", "trellis", "guardian", "shared"]
+
 [project]
 name = "trellis-agent"
 version = "0.1.0"
@@ -27,7 +30,6 @@ ignore = ["ALL"]
 [tool.pytest.ini_options]
 addopts = "-q"
 testpaths = ["tests"]
-workspace = { members = ["core", "trellis", "guardian", "shared"] }
 
 [build-system]
 requires = ["poetry-core"]

@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import json
 from datetime import date, timedelta
-from packages.core.agents import plan_llm, prioritize_llm, estimate_llm, package_llm
 from trellis.core.agents import plan_llm, prioritize_llm, estimate_llm, package_llm
 from trellis.core.models import Task, Sprint, Priority
 

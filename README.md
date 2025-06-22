@@ -111,13 +111,10 @@ trellis/
 │   │   ├── main.py      # API endpoints
 │   │   └── pipeline.py  # LangGraph pipeline
 │   └── cli.py           # Command-line interface
-├── packages/
-│   ├── core/            # Core functionality
-│   │   ├── providers/   # LLM providers
-│   │   ├── agents.py    # Agent functions
-│   │   ├── memory.py    # Vector storage
-│   │   ├── models.py    # Data models
-│   │   └── settings.py  # Configuration
+├── core/                # shared infrastructure
+├── trellis/             # planner agent
+├── guardian/            # well-being sentinel
+├── shared/              # utilities and Automatisch client
 │   └── voice/           # (Future) Voice interface
 └── tests/               # Test suite
 ```
@@ -194,7 +191,7 @@ pip install -e ".[dev]"
 pytest
 
 # run with coverage
-pytest --cov=packages
+pytest --cov=trellis
 ```
 
 ## Roadmap

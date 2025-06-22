@@ -20,7 +20,7 @@ pytest tests/test_providers.py
 pytest tests/test_agents.py::test_plan_llm
 
 # Run with coverage
-pytest --cov=packages --cov-report=html
+pytest --cov=trellis --cov-report=html
 ```
 
 ## Test Dependencies
