@@ -1,59 +1,41 @@
-[tool.poetry]
-name = "trellis-agent"
-version = "0.1.0"
-packages = [
-  { include = "apps", from = "." },
-  { include = "packages", from = "." }
-]
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "trellis-agent"
+name = "proximal"
 version = "0.1.0"
 requires-python = ">=3.12"
-description = "AI agent that converts vague goals into actionable sprints"
+description = "Multi-agent framework for neurodiverse executive functioning support"
 readme = "README.md"
 
-# core runtime deps
 dependencies = [
-  "openai-agents>=0.0.19",
-  "langgraph>=0.4.8",
-  "weaviate-client>=3.26.7,<4.0.0",
-  "fastapi[all]>=0.115.13",
   "pydantic>=2.11",
-  "python-dotenv>=1.0",
-  "ruff>=0.0.297",
-  "pytest>=8.2",
-  "pytest-asyncio>=0.21.0",
-  "pytest-cov>=4.1.0",
-  "pygments>=2.15.0",
+  "fastapi[all]>=0.115.13",
   "typer[all]>=0.4.0",
-  "whisper-timestamped @ git+https://github.com/linto-ai/whisper-timestamped",
+  "python-dotenv>=1.0",
+  "weaviate-client>=3.26.7,<4.0.0",
   "anthropic>=0.18.0",
+  "openai>=1.0.0",
+  "langgraph>=0.4.8",
   "httpx>=0.24.0",
   "rich>=13.0.0",
-  "redis>=5.0.0",
-  "pexpect>=4.9.0"
+  "pytest>=8.2",
+  "pytest-asyncio>=0.21.0",
+  "pytest-cov>=4.1.0"
 ]
 
 [project.optional-dependencies]
 dev = [
   "pre-commit",
   "mypy",
-  "ipykernel"
+  "ipykernel",
+  "ruff>=0.0.297"
 ]
-voice = [
-  "TTS>=0.0.14,<0.1.0; python_version < '3.9'"
-]
-
-[tool.setuptools]
-package-dir = { "" = "packages" }
 
 [tool.setuptools.packages.find]
-where = ["packages"]
-
-[build-system]
-requires = ["setuptools>=67", "wheel"]
-build-backend = "setuptools.build_meta"
+where = ["."]
+include = ["packages*", "apps*"]
 
 [project.scripts]
 trellis = "apps.cli:app"
