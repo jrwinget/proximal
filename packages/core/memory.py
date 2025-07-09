@@ -1,6 +1,10 @@
 import os
 import weaviate
 from unittest.mock import MagicMock
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # skip Weaviate conn in test env
 if os.getenv("SKIP_WEAVIATE_CONNECTION"):
