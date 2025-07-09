@@ -38,7 +38,7 @@ def test_orchestrator_output(monkeypatch):
             new=AsyncMock(return_value={"tasks": [fake_model]}),
         ),
     ):
-        result = orch.run("demo goal")
+        result = orch.run_sync("demo goal")
 
     assert set(result.keys()) == {"plan", "schedule"}
     assert result["plan"][0] == fake_task
