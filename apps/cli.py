@@ -344,5 +344,15 @@ def version():
     console.print("Now with interactive planning and task breakdown! 🌱")
 
 
+@app.command()
+def assist(goal: str = typer.Argument(..., help="Goal to achieve")):
+    """Plan and schedule tasks for a goal using Proximal."""
+    from packages.proximal.orchestrator import Orchestrator
+
+    orch = Orchestrator()
+    result = orch.run(goal)
+    console.print(json.dumps(result, indent=2))
+
+
 if __name__ == "__main__":
     app()
