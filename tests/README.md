@@ -1,6 +1,6 @@
-# Trellis Tests
+# Proximal Tests
 
-This directory contains unit tests for the Trellis project.
+This directory contains unit tests for the Proximal project.
 
 ## Running Tests
 

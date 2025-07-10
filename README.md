@@ -10,7 +10,7 @@
 <!-- badges: end -->
 
 **Proximal** is a multi‑agent framework that turns vague ideas into structured, sprint‑ready plans — with a special focus on supporting neurodiverse workflows.  
-The public command‑line interface is called **`trellis`**, powered under the hood by a manager‑style **Orchestrator** that coordinates multiple specialist agents.
+The public command‑line interface is called **`proximal`**, powered under the hood by a manager‑style **Orchestrator** that coordinates multiple specialist agents.
 
 ---
 
@@ -32,8 +32,8 @@ The public command‑line interface is called **`trellis`**, powered under the h
 
 | Agent | Responsibility |
 |-------|---------------|
-| **Trellis** | Planner — task & sprint decomposition |
-| **Chronos** | Scheduler — deterministic time‑blocking |
+| **Planner** | Task & sprint decomposition |
+| **Chronos** | Scheduling & calendar management |
 | **Guardian** | Well‑being nudges (coming) |
 | **Mentor** | Goal‑coaching & motivation (coming) |
 | **Scribe** | Memory & note capture (coming) |
@@ -53,43 +53,26 @@ All agents register automatically via a plugin decorator and are discoverable by
   * **OpenAI** API key **or**  
   * **Anthropic** API key
 * (Optional) **Weaviate** instance for long‑term memory
-* Python **3.12+**
-* At least one LLM backend  
-  * **Ollama** running locally **or**  
-  * **OpenAI** API key **or**  
-  * **Anthropic** API key
-* (Optional) **Weaviate** instance for long‑term memory
 
 ### Installation
 ```bash
 git clone https://github.com/jrwinget/proximal.git
 cd proximal
-git clone https://github.com/jrwinget/proximal.git
-cd proximal
 pip install -e .
 
-# copy and edit environment settings
 # copy and edit environment settings
 cp .env.example .env
 ```
 
 ### First plan
-### First plan
 ```bash
 # plan‑only flow
-trellis plan "Redesign my personal website"
-# plan‑only flow
-trellis plan "Redesign my personal website"
+proximal plan "Redesign my personal website"
 
 # full multi‑agent flow (plan + schedule)
-trellis assist "Launch a marketing campaign next quarter"
-# full multi‑agent flow (plan + schedule)
-trellis assist "Launch a marketing campaign next quarter"
+proximal assist "Launch a marketing campaign next quarter"
 ```
 
----
-
-## 🖥️ API Server
 ---
 
 ## 🖥️ API Server
@@ -97,17 +80,8 @@ trellis assist "Launch a marketing campaign next quarter"
 ```bash
 # start FastAPI server on http://localhost:7315
 python -m apps.server.main
-# start FastAPI server on http://localhost:7315
-python -m apps.server.main
 ```
 
-### Endpoints
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/plan` | Return sprint/task plan (Planner only) |
-| `POST` | `/assist` | End‑to‑end plan + schedule (Planner + Chronos) |
-
-Example:
 ### Endpoints
 | Method | Path | Description |
 |--------|------|-------------|
@@ -120,81 +94,46 @@ from httpx import post
 resp = post(
   "http://localhost:7315/assist",
   json={"message": "Build a habit‑tracking mobile app"}
-from httpx import post
-resp = post(
-  "http://localhost:7315/assist",
-  json={"message": "Build a habit‑tracking mobile app"}
-)
-print(resp.json())
 print(resp.json())
 ```
 
 ---
 
----
-
-## 🗂️ Project Layout
 ## 🗂️ Project Layout
 ```
-proximal/
 proximal/
 ├── apps/
 │   ├── server/          # FastAPI app
-│   └── cli.py           # trellis CLI (entry point)
+│   └── cli.py           # proximal CLI (entry point)
 │   ├── server/          # FastAPI app
-│   └── cli.py           # trellis CLI (entry point)
+│   └── cli.py           # proximal CLI (entry point)
 ├── packages/
 │   └── proximal/
 │       ├── agents/      # BaseAgent, Chronos, etc.
 │       ├── orchestrator.py
 │       └── ...
 └── tests/               # pytest suite
-│   └── proximal/
-│       ├── agents/      # BaseAgent, Chronos, etc.
-│       ├── orchestrator.py
-│       └── ...
-└── tests/               # pytest suite
 ```
 
 ---
 
----
-
-## ⚙️ Configuration (`.env`)
 ## ⚙️ Configuration (`.env`)
 
 ```env
 # choose your provider: ollama | openai | anthropic
 PROVIDER_NAME=ollama
-# choose your provider: ollama | openai | anthropic
-PROVIDER_NAME=ollama
 
 # Ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3:70b-instruct
-# Ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3:70b-instruct
 
-# OpenAI
 # OpenAI
 # OPENAI_API_KEY=sk-...
 # OPENAI_MODEL=gpt-4o-mini
 # OPENAI_MODEL=gpt-4o-mini
 
 # Anthropic
-# Anthropic
 # ANTHROPIC_API_KEY=sk-...
-# ANTHROPIC_MODEL=claude-3-haiku
-
-# set to 1 when running tests without Weaviate
-SKIP_WEAVIATE_CONNECTION=1
-```
-
----
-
-## 🛠️ Development
-
 # ANTHROPIC_MODEL=claude-3-haiku
 
 # set to 1 when running tests without Weaviate
@@ -208,32 +147,6 @@ SKIP_WEAVIATE_CONNECTION=1
 ```bash
 pip install -e ".[dev]"
 pytest -q            # run entire suite
-pytest --cov=proximal
-black . && flake8
-```
-
-Atomic commits and green tests are required for PRs. See **docs/CONTRIBUTING.md** for code‑style, commit‑message, and DCO details.
-
----
-
-## 📍 Road map (next milestones)
-
-- [ ] Guardian, Mentor, Scribe, Liaison, FocusBuddy implementations  
-- [ ] Calendar API integration (Google / Outlook)  
-- [ ] Slack & Discord notification hooks  
-- [ ] Voice input & speaker diarization  
-- [ ] Mobile companion app  
-- [ ] Advanced analytics dashboard  
-
----
-
-## 📝 License
-**AGPL‑3.0** — see [LICENSE](LICENSE) for details.
-
-> *Proximal — Growing ideas into reality, one task at a time.* 🌱
-pytest -q            # run entire suite
-pytest --cov=proximal
-black . && flake8
 ```
 
 Atomic commits and green tests are required for PRs. See **docs/CONTRIBUTING.md** for code‑style, commit‑message, and DCO details.

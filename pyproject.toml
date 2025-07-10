@@ -38,4 +38,4 @@ where = ["."]
 include = ["packages*", "apps*"]
 
 [project.scripts]
-trellis = "apps.cli:app"
+proximal = "apps.cli:app"

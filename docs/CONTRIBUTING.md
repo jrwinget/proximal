@@ -1,12 +1,12 @@
-# Contributing to Trellis
+# Contributing to Proximal
 
-Thank you for considering contributing to Trellis! We're building this tool to
+Thank you for considering contributing to Proximal! We're building this tool to
 help everyone plan better, and your contributions make that possible. This guide
 will help you get started.
 
 ## Code of Conduct
 
-Please note that Trellis has a [Code of Conduct](CODE_OF_CONDUCT.md). By
+Please note that Proximal has a [Code of Conduct](CODE_OF_CONDUCT.md). By
 contributing, you agree to abide by its terms. We're committed to creating a
 welcoming and inclusive environment for all contributors.
 
@@ -31,7 +31,7 @@ We love hearing ideas for new features! When suggesting enhancements:
 
 * Use a clear and descriptive title
 * Provide a step-by-step description of the suggested enhancement
-* Explain why this enhancement would be useful to most Trellis users
+* Explain why this enhancement would be useful to most Proximal users
 * Consider how it might help users with different planning styles and needs
 * List any alternatives you've considered
 
@@ -62,11 +62,11 @@ Unsure where to begin? Look for these tags in our issues:
 
 ```bash
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/trellis.git
-cd trellis
+git clone https://github.com/jrwinget/proximal.git
+cd proximal
 
 # Add upstream remote
-git remote add upstream https://github.com/jrwinget/trellis.git
+git remote add upstream https://github.com/jrwinget/proximal.git
 
 # Create virtual environment
 python -m venv venv
@@ -124,7 +124,7 @@ async def test_agent_transforms_vague_input_into_structured_plan(mock_chat):
 ## Project Structure
 
 ```
-trellis/
+proximal/
 ├── apps/               # Application entry points
 │   ├── server/         # FastAPI server
 │   │   ├── main.py     # API endpoints

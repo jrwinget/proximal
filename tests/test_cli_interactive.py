@@ -81,7 +81,7 @@ class TestInteractivePlanning:
         # verify success
         assert result.exit_code == 0
         assert "Interactive Planning: Build a mobile app" in result.stdout
-        assert "Trellis needs some clarification" in result.stdout
+        assert "PlannerAgent needs some clarification" in result.stdout
 
         # verify api calls
         assert mock_post.call_count == 2
