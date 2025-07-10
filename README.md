@@ -21,7 +21,7 @@ The public command‑line interface is called **`proximal`**, powered under the 
 | Natural‐language planning | Understands high‑level project goals and clarifies hidden requirements interactively |
 | Sprint breakdown | Generates sprint / task hierarchies with effort estimates and priorities |
 | Scheduling | Time‑boxes tasks into a daily or weekly calendar via the **Chronos** agent |
-| Well‑being nudges | Injects breaks and self‑care checkpoints (Guardian agent — coming soon) |
+| Well‑being nudges | Injects breaks and self‑care checkpoints via the **Guardian** agent |
 | Memory & context | Stores plans and preferences in a vector DB for future sessions |
 | Multi‑provider LLMs | Works with local **Ollama**, **OpenAI**, or **Anthropic** models out‑of‑the‑box |
 | Plug‑in architecture | Extend agents or providers via entry points |
@@ -34,11 +34,11 @@ The public command‑line interface is called **`proximal`**, powered under the 
 |-------|---------------|
 | **Planner** | Task & sprint decomposition |
 | **Chronos** | Scheduling & calendar management |
-| **Guardian** | Well‑being nudges (coming) |
-| **Mentor** | Goal‑coaching & motivation (coming) |
-| **Scribe** | Memory & note capture (coming) |
-| **Liaison** | Communication drafts (coming) |
-| **FocusBuddy** | Focus / Pomodoro support (coming) |
+| **Guardian** | Well‑being nudges & break reminders |
+| **Mentor** | Goal‑coaching & motivation |
+| **Scribe** | Memory & note capture |
+| **Liaison** | Communication drafts |
+| **FocusBuddy** | Focus / Pomodoro support |
 
 All agents register automatically via a plugin decorator and are discoverable by the Orchestrator for easy extension.
 
@@ -69,6 +69,12 @@ cp .env.example .env
 # plan‑only flow
 proximal plan "Redesign my personal website"
 
+# interactive planning with clarification questions
+proximal plan "Build a mobile app" --interactive
+
+# break down tasks into subtasks or pomodoro tasks
+proximal breakdown "Implement user authentication" --hours 8 --type subtasks
+
 # full multi‑agent flow (plan + schedule)
 proximal assist "Launch a marketing campaign next quarter"
 ```
@@ -86,14 +92,27 @@ python -m apps.server.main
 | Method | Path | Description |
 |--------|------|-------------|
 | `POST` | `/plan` | Return sprint/task plan (Planner only) |
-| `POST` | `/assist` | End‑to‑end plan + schedule (Planner + Chronos) |
+| `POST` | `/conversation/start` | Start interactive planning session |
+| `POST` | `/conversation/continue` | Continue conversation with answers |
+| `POST` | `/task/breakdown` | Break down task into subtasks/pomodoro tasks |
+| `GET/PUT` | `/preferences` | View/update user preferences |
 
 Example:
 ```python
 from httpx import post
+
+# One-shot planning
 resp = post(
-  "http://localhost:7315/assist",
+  "http://localhost:7315/plan",
   json={"message": "Build a habit‑tracking mobile app"}
+)
+print(resp.json())
+
+# Interactive planning
+resp = post(
+  "http://localhost:7315/conversation/start",
+  json={"message": "Build a habit‑tracking mobile app"}
+)
 print(resp.json())
 ```
 
@@ -103,16 +122,16 @@ print(resp.json())
 ```
 proximal/
 ├── apps/
-│   ├── server/          # FastAPI app
-│   └── cli.py           # proximal CLI (entry point)
-│   ├── server/          # FastAPI app
-│   └── cli.py           # proximal CLI (entry point)
+│   ├── server/              # FastAPI app
+│   └── cli.py               # proximal CLI (entry point)
 ├── packages/
-│   └── proximal/
-│       ├── agents/      # Planner, Chronos, etc.
+│   └── core/
+│       ├── agents/          # All 7 agents implemented
+│       ├── integrations/    # Calendar, email, automation
+│       ├── providers/       # LLM provider abstractions
 │       ├── orchestrator.py
 │       └── ...
-└── tests/               # pytest suite
+└── tests/                   # pytest suite
 ```
 
 ---
@@ -155,8 +174,7 @@ Atomic commits and green tests are required for PRs. See **docs/CONTRIBUTING.md*
 
 ## 📍 Road map (next milestones)
 
-- [ ] Guardian, Mentor, Scribe, Liaison, FocusBuddy implementations  
-- [ ] Calendar API integration (Google / Outlook)  
+- [ ] Full calendar API integration (Google / Outlook)  
 - [ ] Slack & Discord notification hooks  
 - [ ] Voice input & speaker diarization  
 - [ ] Mobile companion app  
