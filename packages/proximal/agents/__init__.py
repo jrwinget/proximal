@@ -44,3 +44,12 @@ class BaseAgent(ABC):
     @abstractmethod
     def __repr__(self) -> str:  # pragma: no cover - simple representation
         return f"{self.__class__.__name__}()"
+
+
+# ensure built-in agents are registered on import
+from . import chronos  # noqa: F401
+from . import guardian  # noqa: F401
+from . import mentor  # noqa: F401
+from . import scribe  # noqa: F401
+from . import liaison  # noqa: F401
+from . import focusbuddy  # noqa: F401

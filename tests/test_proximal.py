@@ -3,12 +3,22 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from packages.proximal.agents import AGENT_REGISTRY
 from packages.proximal.agents.chronos import ChronosAgent
+from packages.proximal.agents.guardian import GuardianAgent
+from packages.proximal.agents.mentor import MentorAgent
+from packages.proximal.agents.scribe import ScribeAgent
+from packages.proximal.agents.liaison import LiaisonAgent
+from packages.proximal.agents.focusbuddy import FocusBuddyAgent
 from packages.proximal.orchestrator import Orchestrator
 
 
 def test_agent_registration():
-    """ChronosAgent should be registered in the global registry."""
+    """All core agents should be registered."""
     assert AGENT_REGISTRY.get("chronos") is ChronosAgent
+    assert AGENT_REGISTRY.get("guardian") is GuardianAgent
+    assert AGENT_REGISTRY.get("mentor") is MentorAgent
+    assert AGENT_REGISTRY.get("scribe") is ScribeAgent
+    assert AGENT_REGISTRY.get("liaison") is LiaisonAgent
+    assert AGENT_REGISTRY.get("focusbuddy") is FocusBuddyAgent
 
 
 def test_chronos_schedule():
@@ -50,9 +60,38 @@ def test_orchestrator_output(monkeypatch):
             "packages.proximal.orchestrator.plan_llm",
             new=AsyncMock(return_value={"tasks": [fake_model]}),
         ),
+        patch(
+            "packages.proximal.agents.guardian.GuardianAgent.suggest_breaks",
+            return_value=["break"],
+        ),
+        patch(
+            "packages.proximal.agents.mentor.MentorAgent.coach",
+            return_value="coach",
+        ),
+        patch(
+            "packages.proximal.agents.scribe.ScribeAgent.record",
+            return_value="notes",
+        ),
+        patch(
+            "packages.proximal.agents.liaison.LiaisonAgent.compose_message",
+            return_value="msg",
+        ),
+        patch(
+            "packages.proximal.agents.focusbuddy.FocusBuddyAgent.create_sessions",
+            return_value=[],
+        ),
     ):
         result = orch.run_sync("demo goal")
 
-    assert set(result.keys()) == {"plan", "schedule"}
+    assert set(result.keys()) == {
+        "plan",
+        "schedule",
+        "breaks",
+        "coaching",
+        "notes",
+        "message",
+        "focus_sessions",
+    }
+
     assert result["plan"][0] == fake_task
     assert isinstance(result["schedule"], list)
