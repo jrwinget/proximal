@@ -5,6 +5,7 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Tests](https://github.com/emphexis/proximal/actions/workflows/test.yml/badge.svg)](https://github.com/emphexis/proximal/actions/workflows/test.yml)
+[![Plugins](https://img.shields.io/badge/plugins-enabled-brightgreen.svg)](docs/plugins.md)
 <!-- badges: end -->
 
 **Proximal** is a multi‑agent framework that turns vague ideas into structured, sprint‑ready plans — with a special focus on supporting neurodiverse workflows.  
@@ -22,6 +23,7 @@ The public command‑line interface is called **`trellis`**, powered under the h
 | Well‑being nudges | Injects breaks and self‑care checkpoints (Guardian agent — coming soon) |
 | Memory & context | Stores plans and preferences in a vector DB for future sessions |
 | Multi‑provider LLMs | Works with local **Ollama**, **OpenAI**, or **Anthropic** models out‑of‑the‑box |
+| Plug‑in architecture | Extend agents or providers via entry points |
 
 ---
 

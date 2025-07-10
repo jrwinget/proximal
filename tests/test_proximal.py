@@ -1,3 +1,4 @@
+import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from packages.proximal.agents import AGENT_REGISTRY
@@ -19,6 +20,18 @@ def test_chronos_schedule():
     assert schedule[0]["start"] == "09:00"
     assert schedule[0]["end"] == "10:00"
     assert schedule[3]["task"]["title"] == "Break"
+
+    @patch("packages.proximal.integrations.automatisch.httpx.post")
+    def test_chronos_triggers_automatisch(mock_post):
+        mock_post.return_value = MagicMock(
+            status_code=200, raise_for_status=lambda: None
+        )
+        with patch.dict(os.environ, {"AUTOMATISCH_URL": "http://auto"}):
+            agent = ChronosAgent()
+            tasks = [{"title": "Task"}]
+            schedule = agent.create_schedule(tasks)
+            mock_post.assert_called_once()
+            assert schedule[0]["task"]["title"] == "Task"
 
 
 def test_orchestrator_output(monkeypatch):

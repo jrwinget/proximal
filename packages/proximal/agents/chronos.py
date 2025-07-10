@@ -2,6 +2,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import List, Dict
 from . import BaseAgent, register_agent
+from ..integrations.automatisch import trigger_workflow
+import os
 
 
 @register_agent("chronos")
@@ -42,5 +44,8 @@ class ChronosAgent(BaseAgent):
                     }
                 )
                 current = break_end
+
+        if os.getenv("AUTOMATISCH_URL"):
+            trigger_workflow("schedule", {"schedule": schedule})
 
         return schedule

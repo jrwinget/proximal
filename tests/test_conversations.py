@@ -1,3 +1,4 @@
+import os
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import json
@@ -100,11 +101,13 @@ class TestSessionManager:
         # session should be removed from active sessions
         assert session_id not in session_manager.sessions
 
-        # weaviate should be called to persist
-        mock_weaviate.data_object.create.assert_called_once()
-        call_args = mock_weaviate.data_object.create.call_args
-        assert call_args[1]["class_name"] == "ConversationHistory"
-        assert "session_id" in call_args[1]["data_object"]
+        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+            mock_weaviate.data_object.create.assert_not_called()
+        else:
+            mock_weaviate.data_object.create.assert_called_once()
+            call_args = mock_weaviate.data_object.create.call_args
+            assert call_args[1]["class_name"] == "ConversationHistory"
+            assert "session_id" in call_args[1]["data_object"]
 
     def test_get_user_preferences_default(self, session_manager, mock_weaviate):
         """Test getting default user preferences"""
@@ -131,8 +134,10 @@ class TestSessionManager:
         assert cached.sprint_length_weeks == 1
         assert cached.tone == "casual"
 
-        # weaviate should be called
-        mock_weaviate.data_object.create.assert_called()
+        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+            mock_weaviate.data_object.create.assert_not_called()
+        else:
+            mock_weaviate.data_object.create.assert_called()
 
 
 @pytest.mark.asyncio
