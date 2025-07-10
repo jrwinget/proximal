@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: dev
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT }}
 
       - name: Merge main into dev
         run: |
