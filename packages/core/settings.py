@@ -1,12 +1,14 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import model_validator
+from pydantic import model_validator, Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    trellis_provider: str = "ollama"
-
+    provider_name: str = Field(
+        "ollama",
+        validation_alias=AliasChoices("PROVIDER_NAME", "PROVIDER_NAME"),
+    )
     ollama_base_url: str | None = None
     ollama_model: str | None = None
 
@@ -31,10 +33,10 @@ class Settings(BaseSettings):
         env_path = Path(".env")
         if not env_path.exists():
             raise FileNotFoundError(
-                ".env file not found - please create one with TRELLIS_PROVIDER and credentials."
+                ".env file not found - please create one with PROVIDER_NAME and credentials."
             )
 
-        prov = self.trellis_provider.lower()
+        prov = self.provider_name.lower()
         if prov == "ollama":
             if not self.ollama_base_url or not self.ollama_model:
                 raise ValueError(
@@ -47,7 +49,7 @@ class Settings(BaseSettings):
             if not self.anthropic_api_key or not self.anthropic_model:
                 raise ValueError("ANTHROPIC_API_KEY must be set for provider=anthropic")
         else:
-            raise ValueError(f"Unknown TRELLIS_PROVIDER '{self.trellis_provider}'")
+            raise ValueError(f"Unknown PROVIDER_NAME '{self.provider_name}'")
 
         return self
 

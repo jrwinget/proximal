@@ -1,31 +1,30 @@
+from __future__ import annotations
+from typing import Any
+from importlib import metadata
 from ..settings import get_settings
-from .ollama_provider import OllamaChat
-from .openai_provider import acomplete as openai_acomplete
-from .anthropic_provider import acomplete as anthropic_acomplete
+from packages.proximal.providers import (
+    PROVIDER_REGISTRY,
+    BaseProvider,
+    register_provider,
+    _load_plugins,
+)
 
-_SETTINGS = get_settings()
+_provider_instance: BaseProvider | None = None
 
 
-async def chat(messages, tools=None) -> str:
-    """
-    Route the chat request to the appropriate provider.
+def _get_provider() -> BaseProvider:
+    _load_plugins()
+    global _provider_instance
+    if _provider_instance is None:
+        settings = get_settings()
+        name = settings.provider_name.lower()
+        cls = PROVIDER_REGISTRY.get(name)
+        if not cls:
+            raise ValueError(f"Unknown provider {name}")
+        _provider_instance = cls()
+    return _provider_instance
 
-    Args:
-        messages: List of message objects in the conversation
-        tools: Optional list of tools for function calling
 
-    Returns:
-        The content of the model's response
-    """
-    prov = _SETTINGS.trellis_provider.lower()
-
-    if prov == "ollama":
-        return await OllamaChat.acomplete(messages, tools)
-
-    if prov == "openai":
-        return await openai_acomplete(messages, tools)
-
-    if prov == "anthropic":
-        return await anthropic_acomplete(messages, tools)
-
-    raise ValueError(f"Unknown provider {prov}")
+async def chat(messages: list[dict], tools: Any | None = None) -> str:
+    provider = _get_provider()
+    return await provider.chat_complete(messages, tools=tools)
