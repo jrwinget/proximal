@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
-from packages.core.agents import plan_llm
+from .agents import plan_llm
 from .agents import AGENT_REGISTRY, PlannerAgent
 
 

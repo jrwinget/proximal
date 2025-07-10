@@ -1,7 +1,8 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import List, Dict
-from . import PlannerAgent, register_agent
+from . import PlannerAgent
+from .registry import register_agent
 from ..integrations.automatisch import trigger_workflow
 import os
 

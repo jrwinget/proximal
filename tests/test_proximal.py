@@ -1,14 +1,14 @@
 import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from packages.proximal.agents import AGENT_REGISTRY
-from packages.proximal.agents.chronos import ChronosAgent
-from packages.proximal.agents.guardian import GuardianAgent
-from packages.proximal.agents.mentor import MentorAgent
-from packages.proximal.agents.scribe import ScribeAgent
-from packages.proximal.agents.liaison import LiaisonAgent
-from packages.proximal.agents.focusbuddy import FocusBuddyAgent
-from packages.proximal.orchestrator import Orchestrator
+from packages.core.agents import AGENT_REGISTRY
+from packages.core.agents.chronos import ChronosAgent
+from packages.core.agents.guardian import GuardianAgent
+from packages.core.agents.mentor import MentorAgent
+from packages.core.agents.scribe import ScribeAgent
+from packages.core.agents.liaison import LiaisonAgent
+from packages.core.agents.focusbuddy import FocusBuddyAgent
+from packages.core.orchestrator import Orchestrator
 
 
 def test_agent_registration():
@@ -31,7 +31,7 @@ def test_chronos_schedule():
     assert schedule[0]["end"] == "10:00"
     assert schedule[3]["task"]["title"] == "Break"
 
-    @patch("packages.proximal.integrations.automatisch.httpx.post")
+    @patch("packages.core.integrations.automatisch.httpx.post")
     def test_chronos_triggers_automatisch(mock_post):
         mock_post.return_value = MagicMock(
             status_code=200, raise_for_status=lambda: None
@@ -57,27 +57,27 @@ def test_orchestrator_output(monkeypatch):
             new=AsyncMock(return_value={"tasks": [fake_model]}),
         ),
         patch(
-            "packages.proximal.orchestrator.plan_llm",
+            "packages.core.orchestrator.plan_llm",
             new=AsyncMock(return_value={"tasks": [fake_model]}),
         ),
         patch(
-            "packages.proximal.agents.chronos.ChronosAgent.create_schedule",
+            "packages.core.agents.chronos.ChronosAgent.create_schedule",
             return_value=[{"task": fake_task}],
         ),
         patch(
-            "packages.proximal.agents.guardian.GuardianAgent.add_nudges",
+            "packages.core.agents.guardian.GuardianAgent.add_nudges",
             return_value=[fake_task],
         ),
-        patch("packages.proximal.agents.mentor.MentorAgent.motivate", return_value="m"),
+        patch("packages.core.agents.mentor.MentorAgent.motivate", return_value="m"),
         patch(
-            "packages.proximal.agents.scribe.ScribeAgent.record_plan", return_value="ok"
+            "packages.core.agents.scribe.ScribeAgent.record_plan", return_value="ok"
         ),
         patch(
-            "packages.proximal.agents.liaison.LiaisonAgent.draft_message",
+            "packages.core.agents.liaison.LiaisonAgent.draft_message",
             return_value="msg",
         ),
         patch(
-            "packages.proximal.agents.focusbuddy.FocusBuddyAgent.create_sessions",
+            "packages.core.agents.focusbuddy.FocusBuddyAgent.create_sessions",
             return_value=[{"session": 1}],
         ),
     ):

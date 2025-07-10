@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import MagicMock
 
-from packages.proximal.agents.guardian import GuardianAgent
-from packages.proximal.agents.mentor import MentorAgent
-from packages.proximal.agents.scribe import ScribeAgent
-from packages.proximal.agents.liaison import LiaisonAgent
-from packages.proximal.agents.focusbuddy import FocusBuddyAgent
+from packages.core.agents.guardian import GuardianAgent
+from packages.core.agents.mentor import MentorAgent
+from packages.core.agents.scribe import ScribeAgent
+from packages.core.agents.liaison import LiaisonAgent
+from packages.core.agents.focusbuddy import FocusBuddyAgent
 
 
 def test_guardian_adds_breaks():
@@ -26,7 +26,7 @@ def test_scribe_records(monkeypatch):
     agent = ScribeAgent()
     mock_batch = MagicMock()
     monkeypatch.setattr(
-        "packages.proximal.agents.scribe.mem", MagicMock(batch=mock_batch)
+        "packages.core.agents.scribe.mem", MagicMock(batch=mock_batch)
     )
     plan = [{"title": "Task"}]
     agent.record_plan(plan)

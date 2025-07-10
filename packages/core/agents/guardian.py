@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List, Dict
-from . import PlannerAgent, register_agent
+from . import PlannerAgent
+from .registry import register_agent
 
 
 @register_agent("guardian")

@@ -1,8 +1,9 @@
 from __future__ import annotations
 from typing import List, Dict
-from . import PlannerAgent, register_agent
-from packages.core.agents import _json
-from packages.core.memory import client as mem
+from . import PlannerAgent
+from .registry import register_agent
+from .planner import _json
+from ..memory import client as mem
 
 
 @register_agent("scribe")

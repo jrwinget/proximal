@@ -142,11 +142,11 @@ class TestSessionManager:
 
 @pytest.mark.asyncio
 class TestConversationFlow:
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("packages.core.agents.planner.chat_model", new_callable=AsyncMock)
+    @patch("packages.core.agents.planner.session_manager")
     async def test_clarify_llm_needs_clarification(self, mock_session_mgr, mock_chat):
         """Test clarify_llm when clarification is needed"""
-        from packages.core.agents import clarify_llm
+        from packages.core.agents.planner import clarify_llm
 
         # setup mocks
         mock_chat.return_value = json.dumps(
@@ -173,11 +173,11 @@ class TestConversationFlow:
         assert len(result["clarification_questions"]) == 2
         assert "What platform?" in result["clarification_questions"]
 
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("packages.core.agents.planner.chat_model", new_callable=AsyncMock)
+    @patch("packages.core.agents.planner.session_manager")
     async def test_clarify_llm_no_clarification(self, mock_session_mgr, mock_chat):
         """Test clarify_llm when no clarification is needed"""
-        from packages.core.agents import clarify_llm
+        from packages.core.agents.planner import clarify_llm
 
         # setup mocks
         mock_chat.return_value = json.dumps(
@@ -196,11 +196,11 @@ class TestConversationFlow:
         assert result["needs_clarification"] is False
         assert result["clarification_questions"] == []
 
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("packages.core.agents.planner.chat_model", new_callable=AsyncMock)
+    @patch("packages.core.agents.planner.session_manager")
     async def test_integrate_clarifications(self, mock_session_mgr, mock_chat):
         """Test integrating clarification answers into enriched goal"""
-        from packages.core.agents import integrate_clarifications_llm
+        from packages.core.agents.planner import integrate_clarifications_llm
 
         # setup mock session with q&a
         mock_session = ConversationState(goal="Build an app")
@@ -224,11 +224,11 @@ class TestConversationFlow:
         assert "SwiftUI" in result["goal"]
         assert result["original_goal"] == "Build an app"
 
-    @patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-    @patch("packages.core.agents.session_manager")
+    @patch("packages.core.agents.planner.chat_model", new_callable=AsyncMock)
+    @patch("packages.core.agents.planner.session_manager")
     async def test_plan_with_memory_context(self, mock_session_mgr, mock_chat):
         """Test that plan_llm uses memory context"""
-        from packages.core.agents import plan_llm
+        from packages.core.agents.planner import plan_llm
 
         # setup mocks
         mock_session_mgr.get_user_preferences.return_value = UserPreferences(
@@ -272,7 +272,7 @@ class TestConversationFlow:
         assert "casual tone" in prompt
         assert "similar past projects" in prompt
 
-    @patch("packages.core.agents.breakdown_task_llm")
+    @patch("packages.core.agents.planner.breakdown_task_llm")
     async def test_task_breakdown_subtasks(self, mock_breakdown):
         """Test breaking down a task into subtasks"""
         from packages.core.models import Task, Priority

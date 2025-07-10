@@ -65,12 +65,12 @@ class ConversationState(BaseModel):
 
 
 class UserPreferences(BaseModel):
-    user_id: str = Field(default="default")  # single user for now
+    user_id: str = Field(default="default")
     sprint_length_weeks: int = 2
-    priority_system: str = "P0-P3"  # could be "NOW-NEXT-LATER" etc
-    tone: str = "professional"  # professional, casual, motivational
+    priority_system: str = "P0-P3"
+    tone: str = "professional"
     work_hours_per_week: int = 40
-    preferred_task_size: str = "medium"  # small, medium, large
+    preferred_task_size: str = "medium"
     include_breaks: bool = True
     timezone: str = "UTC"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -91,4 +91,4 @@ class ClarificationRequest(BaseModel):
 
 
 class ClarificationResponse(BaseModel):
-    answers: Dict[str, str]  # question -> answer mapping
+    answers: Dict[str, str]

@@ -1,63 +1,40 @@
+from __future__ import annotations
+
 from anthropic import AsyncAnthropic
 from ..settings import get_settings
 
+from .base import BaseProvider
+from . import register_provider
+
 _SETTINGS = get_settings()
-_client = None
 
 
-def get_client():
-    """
-    Lazy initialization of the Anthropic client.
-    Only creates the client when actually needed.
-    """
-    global _client
-    if _client is None:
-        _client = AsyncAnthropic(
-            api_key=_SETTINGS.anthropic_api_key,
-            base_url=_SETTINGS.anthropic_base_url,
+@register_provider("anthropic")
+class AnthropicProvider(BaseProvider):
+    """Anthropic Claude chat completion provider."""
+
+    def __init__(self) -> None:
+        self._client: AsyncAnthropic | None = None
+
+    def _get_client(self) -> AsyncAnthropic:
+        if self._client is None:
+            self._client = AsyncAnthropic(
+                api_key=_SETTINGS.anthropic_api_key,
+                base_url=_SETTINGS.anthropic_base_url,
+            )
+        return self._client
+
+    async def chat_complete(self, messages: list[dict], **kwargs: object) -> str:
+        tools = kwargs.get("tools")
+        client = self._get_client()
+        anthropic_messages = self._convert(messages)
+        resp = await client.messages.create(
+            model=_SETTINGS.anthropic_model,
+            messages=anthropic_messages,
+            max_tokens=4096,
+            tools=tools,
         )
-    return _client
+        return resp.content[0].text
 
-
-async def acomplete(messages, tools=None):
-    """
-    Async function to complete a conversation with Claude.
-
-    Args:
-        messages: List of message objects in the conversation
-        tools: Optional list of tools for function calling
-
-    Returns:
-        The content of the model's response
-    """
-    client = get_client()
-
-    anthropic_messages = _convert_to_anthropic_format(messages)
-
-    kwargs = {
-        "model": _SETTINGS.anthropic_model,
-        "messages": anthropic_messages,
-        "max_tokens": 4096,
-    }
-
-    if tools:
-        kwargs["tools"] = tools
-
-    response = await client.messages.create(**kwargs)
-
-    return response.content[0].text
-
-
-def _convert_to_anthropic_format(messages):
-    """
-    Convert messages from OpenAI format to Anthropic format if needed.
-
-    Args:
-        messages: List of message objects
-
-    Returns:
-        List of messages in Anthropic format
-    """
-    # anthropic's API expects messages in a specific format
-    # this is a simple implementation that works for basic cases
-    return messages
+    def _convert(self, messages: list[dict]) -> list[dict]:
+        return messages

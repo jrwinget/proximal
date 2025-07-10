@@ -8,10 +8,10 @@ sys.path.insert(0, str(project_root))
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-@patch("packages.core.agents.mem", new_callable=MagicMock)
+@patch("packages.core.agents.planner.chat_model", new_callable=AsyncMock)
+@patch("packages.core.agents.planner.mem", new_callable=MagicMock)
 @patch(
-    "packages.core.agents._json", return_value="{}"
+    "packages.core.agents.planner._json", return_value="{}"
 )  # mock _json to avoid date serialization issues
 async def test_pipeline_flow(mock_json, mock_mem, mock_chat):
     """Test that pipeline flows through all expected steps."""
