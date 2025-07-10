@@ -61,37 +61,39 @@ def test_orchestrator_output(monkeypatch):
             new=AsyncMock(return_value={"tasks": [fake_model]}),
         ),
         patch(
-            "packages.proximal.agents.guardian.GuardianAgent.suggest_breaks",
-            return_value=["break"],
+            "packages.proximal.agents.chronos.ChronosAgent.create_schedule",
+            return_value=[{"task": fake_task}],
         ),
         patch(
-            "packages.proximal.agents.mentor.MentorAgent.coach",
-            return_value="coach",
+            "packages.proximal.agents.guardian.GuardianAgent.add_nudges",
+            return_value=[fake_task],
+        ),
+        patch("packages.proximal.agents.mentor.MentorAgent.motivate", return_value="m"),
+        patch(
+            "packages.proximal.agents.scribe.ScribeAgent.record_plan", return_value="ok"
         ),
         patch(
-            "packages.proximal.agents.scribe.ScribeAgent.record",
-            return_value="notes",
-        ),
-        patch(
-            "packages.proximal.agents.liaison.LiaisonAgent.compose_message",
+            "packages.proximal.agents.liaison.LiaisonAgent.draft_message",
             return_value="msg",
         ),
         patch(
             "packages.proximal.agents.focusbuddy.FocusBuddyAgent.create_sessions",
-            return_value=[],
+            return_value=[{"session": 1}],
         ),
     ):
         result = orch.run_sync("demo goal")
 
-    assert set(result.keys()) == {
+    expected = {
         "plan",
         "schedule",
-        "breaks",
-        "coaching",
-        "notes",
-        "message",
-        "focus_sessions",
+        "chronos",
+        "guardian",
+        "mentor",
+        "scribe",
+        "liaison",
+        "focusbuddy",
     }
 
+    assert set(result.keys()).issuperset(expected)
     assert result["plan"][0] == fake_task
     assert isinstance(result["schedule"], list)

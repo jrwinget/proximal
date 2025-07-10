@@ -30,3 +30,8 @@ else:
                 # think about passing "vectorIndexConfig" here
             }
         )
+
+
+def store(role: str, content: str) -> None:
+    """Helper to persist content with a role label."""
+    client.batch.add_data_object({"role": role, "content": content}, "Memory")

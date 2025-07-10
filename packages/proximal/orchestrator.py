@@ -17,37 +17,46 @@ class Orchestrator:
             raise ValueError(f"Agent '{name}' not found in registry")
         return cls()
 
+    async def _call(self, agent: BaseAgent, method: str, *args: Any) -> Any:
+        fn = getattr(agent, method)
+        if asyncio.iscoroutinefunction(fn):
+            return await fn(*args)
+        return await asyncio.to_thread(fn, *args)
+
     async def run(self, goal: str) -> Dict[str, Any]:
-        """Generate a plan and run all registered agents."""
+        """Generate a plan and aggregate outputs from all agents."""
         tasks_result = await plan_llm({"goal": goal})
         tasks = [t.model_dump() for t in tasks_result.get("tasks", [])]
 
-        chronos = self._get_agent("chronos")
-        guardian = self._get_agent("guardian")
-        mentor = self._get_agent("mentor")
-        scribe = self._get_agent("scribe")
-        liaison = self._get_agent("liaison")
-        focusbuddy = self._get_agent("focusbuddy")
-
-        schedule = chronos.create_schedule(tasks)
-
-        results = await asyncio.gather(
-            asyncio.to_thread(guardian.suggest_breaks, tasks),
-            asyncio.to_thread(mentor.coach, goal),
-            asyncio.to_thread(scribe.record, goal, tasks),
-            asyncio.to_thread(liaison.compose_message, goal),
-            asyncio.to_thread(focusbuddy.create_sessions, tasks),
-        )
-
-        return {
-            "plan": tasks,
-            "schedule": schedule,
-            "breaks": results[0],
-            "coaching": results[1],
-            "notes": results[2],
-            "message": results[3],
-            "focus_sessions": results[4],
+        agents = {
+            "chronos": ("create_schedule", tasks),
+            "guardian": ("add_nudges", tasks),
+            "mentor": ("motivate", goal),
+            "scribe": ("record_plan", tasks),
+            "liaison": ("draft_message", goal),
+            "focusbuddy": ("create_sessions", tasks),
         }
+
+        results: Dict[str, Any] = {"plan": tasks}
+        coros = []
+        agent_names: List[str] = []
+        for name, (method, arg) in agents.items():
+            try:
+                inst = self._get_agent(name)
+            except ValueError:
+                continue
+            coros.append(self._call(inst, method, arg))
+            agent_names.append(name)
+
+        outputs = await asyncio.gather(*coros, return_exceptions=True)
+        for name, value in zip(agent_names, outputs):
+            results[name] = value if not isinstance(value, Exception) else None
+
+        # backward compatible key for scheduler
+        if "chronos" in results:
+            results["schedule"] = results["chronos"]
+
+        return results
 
     def run_sync(self, goal: str) -> Dict[str, Any]:
         """Synchronous wrapper for the async run method."""
