@@ -51,7 +51,7 @@ def test_version(runner):
     """Test the version command."""
     result = runner.invoke(app, ["version"])
     assert result.exit_code == 0
-    assert "Trellis CLI" in result.stdout
+    assert "Proximal CLI" in result.stdout
 
 
 @patch("apps.cli.httpx.post")

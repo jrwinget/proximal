@@ -11,7 +11,7 @@ from rich.prompt import Prompt, Confirm
 from rich.panel import Panel
 from rich.markdown import Markdown
 
-app = typer.Typer(help="Trellis CLI - Transform ideas into actionable project plans")
+app = typer.Typer(help="Proximal CLI - Transform ideas into actionable project plans")
 console = Console()
 
 # default API URL, can be overridden with environment variables
@@ -32,7 +32,7 @@ def plan(
     """
     Transform a goal or idea into a structured project plan with tasks and sprints.
 
-    Use --interactive for a conversational planning experience where Trellis
+    Use --interactive for a conversational planning experience where PlannerAgent
     asks clarifying questions to create a more detailed and personalized plan.
     """
     console.print(
@@ -98,7 +98,7 @@ def _interactive_planning(goal: str) -> List[Dict]:
         if not questions:
             break
 
-        console.print("\n[bold blue]Trellis needs some clarification:[/bold blue]")
+        console.print("\n[bold blue]PlannerAgent needs some clarification:[/bold blue]")
 
         # display questions
         for i, question in enumerate(questions, 1):
@@ -246,7 +246,7 @@ def preferences(
     """
     View or update your planning preferences.
 
-    These preferences help Trellis create personalized plans that match your work style.
+    These preferences help PlannerAgent create personalized plans that match your work style.
     """
     try:
         if any([sprint_weeks, work_hours, tone, task_size]):
@@ -339,8 +339,8 @@ def _display_pretty_plan(plan_data):
 
 @app.command()
 def version():
-    """Show the version of Trellis CLI."""
-    console.print("[bold green]Trellis CLI[/bold green] v0.2.0")
+    """Show the version of Proximal CLI."""
+    console.print("[bold green]Proximal CLI[/bold green] v0.2.0")
     console.print("Now with interactive planning and task breakdown! 🌱")
 
 

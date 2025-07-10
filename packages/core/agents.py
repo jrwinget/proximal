@@ -53,7 +53,7 @@ async def clarify_llm(state: dict) -> dict:
             history_context += f"- Goal: {hist['goal']}\n"
 
     prompt = (
-        "You are Trellis-Clarifier, an AI assistant that helps clarify project requirements.\n\n"
+        "You are Planner-Clarifier, an AI assistant that helps clarify project requirements.\n\n"
         f"{pref_context}\n"
         f"{history_context}\n"
         f"User's goal: {goal}\n\n"
@@ -112,7 +112,7 @@ async def integrate_clarifications_llm(state: dict) -> dict:
             qa_context += f"Q: {question}\nA: {answer}\n"
 
     prompt = (
-        "You are Trellis-Integrator. Synthesize the original goal with clarification answers "
+        "You are Planner-Integrator. Synthesize the original goal with clarification answers "
         "into an enriched, detailed project description.\n\n"
         f"{qa_context}\n"
         "Create a comprehensive goal statement that incorporates all the clarified details."
@@ -149,7 +149,7 @@ async def plan_llm(state: dict) -> dict:
                 history_context += ", ".join(sample_tasks) + "\n"
 
     prompt = (
-        "You are Trellis-Planner, an expert project planning AI.\n\n"
+        "You are Core-Planner, an expert project planning AI.\n\n"
         f"{pref_context}\n"
         f"{history_context}\n"
         f"Transform this goal into detailed tasks:\n{goal}\n\n"

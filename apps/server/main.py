@@ -59,8 +59,8 @@ class PreferencesUpdate(BaseModel):
 
 
 app = FastAPI(
-    title="Trellis API",
-    description="AI agent that transforms vague ideas into actionable project plans",
+    title="Proximal API",
+    description="Agentic ecosystem helping to scaffold executing functioning",
     version="0.2.0",
 )
 
