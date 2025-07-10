@@ -109,7 +109,7 @@ proximal/
 │   └── cli.py           # proximal CLI (entry point)
 ├── packages/
 │   └── proximal/
-│       ├── agents/      # BaseAgent, Chronos, etc.
+│       ├── agents/      # Planner, Chronos, etc.
 │       ├── orchestrator.py
 │       └── ...
 └── tests/               # pytest suite

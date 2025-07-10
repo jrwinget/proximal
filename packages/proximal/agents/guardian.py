@@ -1,10 +1,10 @@
 from __future__ import annotations
 from typing import List, Dict
-from . import BaseAgent, register_agent
+from . import PlannerAgent, register_agent
 
 
 @register_agent("guardian")
-class GuardianAgent(BaseAgent):
+class GuardianAgent(PlannerAgent):
     """Insert well-being reminders into task lists."""
 
     def __init__(self) -> None:  # pragma: no cover - trivial

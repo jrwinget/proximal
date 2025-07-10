@@ -3,13 +3,13 @@ from abc import ABC, abstractmethod
 from typing import Callable, Dict, Type
 from importlib import metadata
 
-AGENT_REGISTRY: Dict[str, Type["BaseAgent"]] = {}
+AGENT_REGISTRY: Dict[str, Type["PlannerAgent"]] = {}
 
 
-def register_agent(name: str) -> Callable[[Type["BaseAgent"]], Type["BaseAgent"]]:
+def register_agent(name: str) -> Callable[[Type["PlannerAgent"]], Type["PlannerAgent"]]:
     """Decorator to register an agent class by name."""
 
-    def decorator(cls: Type["BaseAgent"]) -> Type["BaseAgent"]:
+    def decorator(cls: Type["PlannerAgent"]) -> Type["PlannerAgent"]:
         AGENT_REGISTRY[name] = cls
         return cls
 
@@ -34,7 +34,7 @@ def _load_plugins() -> None:
 _load_plugins()
 
 
-class BaseAgent(ABC):
+class PlannerAgent(ABC):
     """Base class for all agents."""
 
     @abstractmethod
