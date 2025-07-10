@@ -1,9 +1,10 @@
 from __future__ import annotations
-from . import BaseAgent, register_agent
+from . import PlannerAgent
+from .registry import register_agent
 
 
 @register_agent("liaison")
-class LiaisonAgent(BaseAgent):
+class LiaisonAgent(PlannerAgent):
     """Draft simple communication messages."""
 
     def __init__(self) -> None:  # pragma: no cover - trivial

@@ -1,9 +1,10 @@
 from __future__ import annotations
-from . import BaseAgent, register_agent
+from . import PlannerAgent
+from .registry import register_agent
 
 
 @register_agent("mentor")
-class MentorAgent(BaseAgent):
+class MentorAgent(PlannerAgent):
     """Provide motivational coaching snippets."""
 
     def __init__(self) -> None:  # pragma: no cover - trivial

@@ -1,13 +1,14 @@
 from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import List, Dict
-from . import BaseAgent, register_agent
+from . import PlannerAgent
+from .registry import register_agent
 from ..integrations.automatisch import trigger_workflow
 import os
 
 
 @register_agent("chronos")
-class ChronosAgent(BaseAgent):
+class ChronosAgent(PlannerAgent):
     """Simple scheduler that assigns tasks into hourly blocks."""
 
     def __init__(self) -> None:  # pragma: no cover - trivial

@@ -1,10 +1,11 @@
 from __future__ import annotations
 from typing import List, Dict
-from . import BaseAgent, register_agent
+from . import PlannerAgent
+from .registry import register_agent
 
 
 @register_agent("focusbuddy")
-class FocusBuddyAgent(BaseAgent):
+class FocusBuddyAgent(PlannerAgent):
     """Create short focus sessions for each task."""
 
     def __init__(self) -> None:  # pragma: no cover - trivial

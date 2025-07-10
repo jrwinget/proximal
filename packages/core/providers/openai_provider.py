@@ -1,39 +1,35 @@
+from __future__ import annotations
+
 from openai import AsyncOpenAI
 from ..settings import get_settings
 
+from .base import BaseProvider
+from . import register_provider
+
 _SETTINGS = get_settings()
-_client = None
 
 
-def get_client():
-    """
-    Lazy initialization of the OpenAI client.
-    Only creates the client when actually needed.
-    """
-    global _client
-    if _client is None:
-        _client = AsyncOpenAI(
-            api_key=_SETTINGS.openai_api_key,
-            base_url=_SETTINGS.openai_base_url,
+@register_provider("openai")
+class OpenAIProvider(BaseProvider):
+    """OpenAI chat completion provider."""
+
+    def __init__(self) -> None:
+        self._client: AsyncOpenAI | None = None
+
+    def _get_client(self) -> AsyncOpenAI:
+        if self._client is None:
+            self._client = AsyncOpenAI(
+                api_key=_SETTINGS.openai_api_key,
+                base_url=_SETTINGS.openai_base_url,
+            )
+        return self._client
+
+    async def chat_complete(self, messages: list[dict], **kwargs: object) -> str:
+        tools = kwargs.get("tools")
+        client = self._get_client()
+        resp = await client.chat.completions.create(
+            model=_SETTINGS.openai_model,
+            messages=messages,
+            tools=tools,
         )
-    return _client
-
-
-async def acomplete(messages, tools=None):
-    """
-    Async function to complete a conversation with OpenAI.
-
-    Args:
-        messages: List of message objects in the conversation
-        tools: Optional list of tools for function calling
-
-    Returns:
-        The content of the model's response
-    """
-    client = get_client()
-    resp = await client.chat.completions.create(
-        model=_SETTINGS.openai_model,
-        messages=messages,
-        tools=tools,
-    )
-    return resp.choices[0].message.content
+        return resp.choices[0].message.content

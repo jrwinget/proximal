@@ -1,8 +1,8 @@
 from __future__ import annotations
 import asyncio
 from typing import Any, Dict, List
-from packages.core.agents import plan_llm
-from .agents import AGENT_REGISTRY, BaseAgent
+from .agents import plan_llm
+from .agents import AGENT_REGISTRY, PlannerAgent
 
 
 class Orchestrator:
@@ -11,13 +11,13 @@ class Orchestrator:
     def __init__(self) -> None:
         self.registry = AGENT_REGISTRY
 
-    def _get_agent(self, name: str) -> BaseAgent:
+    def _get_agent(self, name: str) -> PlannerAgent:
         cls = self.registry.get(name)
         if not cls:
             raise ValueError(f"Agent '{name}' not found in registry")
         return cls()
 
-    async def _call(self, agent: BaseAgent, method: str, *args: Any) -> Any:
+    async def _call(self, agent: PlannerAgent, method: str, *args: Any) -> Any:
         fn = getattr(agent, method)
         if asyncio.iscoroutinefunction(fn):
             return await fn(*args)

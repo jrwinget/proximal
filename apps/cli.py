@@ -347,7 +347,7 @@ def version():
 @app.command()
 def assist(goal: str = typer.Argument(..., help="Goal to achieve")):
     """Plan and schedule tasks for a goal using Proximal."""
-    from packages.proximal.orchestrator import Orchestrator
+    from packages.core.orchestrator import Orchestrator
 
     orch = Orchestrator()
     result = orch.run(goal)
