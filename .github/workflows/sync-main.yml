@@ -23,5 +23,5 @@ jobs:
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
           git fetch origin main
-          git merge origin/main --no-edit
+          git merge origin/main --no-edit --allow-unrelated-histories || echo "Already merged"
           git push origin dev
