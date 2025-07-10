@@ -165,9 +165,9 @@ proximal/
 
 ```env
 # choose your provider: ollama | openai | anthropic
-TRELLIS_PROVIDER=ollama
+PROVIDER_NAME=ollama
 # choose your provider: ollama | openai | anthropic
-TRELLIS_PROVIDER=ollama
+PROVIDER_NAME=ollama
 
 # Ollama
 OLLAMA_BASE_URL=http://localhost:11434

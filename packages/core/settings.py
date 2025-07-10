@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     provider_name: str = Field(
         "ollama",
-        validation_alias=AliasChoices("PROVIDER_NAME", "TRELLIS_PROVIDER"),
+        validation_alias=AliasChoices("PROVIDER_NAME", "PROVIDER_NAME"),
     )
     ollama_base_url: str | None = None
     ollama_model: str | None = None
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
         env_path = Path(".env")
         if not env_path.exists():
             raise FileNotFoundError(
-                ".env file not found - please create one with TRELLIS_PROVIDER and credentials."
+                ".env file not found - please create one with PROVIDER_NAME and credentials."
             )
 
         prov = self.provider_name.lower()

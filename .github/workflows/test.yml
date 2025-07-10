@@ -33,7 +33,7 @@ jobs:
       run: |
         pytest --cov=packages --cov-report=xml
       env:
-        TRELLIS_PROVIDER: ollama
+        PROVIDER_NAME: ollama
         OLLAMA_BASE_URL: http://localhost:8080
         OLLAMA_MODEL: test-model
         SKIP_WEAVIATE_CONNECTION: true

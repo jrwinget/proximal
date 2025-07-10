@@ -16,7 +16,7 @@ def mock_env_settings():
 
     # test environment variables
     env_vars = {
-        "TRELLIS_PROVIDER": "ollama",
+        "PROVIDER_NAME": "ollama",
         "OLLAMA_BASE_URL": "http://localhost:11434",
         "OLLAMA_MODEL": "llama3",
         "OPENAI_API_KEY": "sk-test-key",

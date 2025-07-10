@@ -24,6 +24,7 @@ async def test_chat_basic(provider):
                 "OPENAI_MODEL": "gpt-4o-mini",
                 "ANTHROPIC_API_KEY": "sk-ant-key",
                 "ANTHROPIC_MODEL": "claude-3-haiku",
+                "SKIP_WEAVIATE_CONNECTION": "1",
             },
             clear=True,
         ),
