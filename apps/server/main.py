@@ -3,6 +3,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Union, Literal
 import logging
+import secrets
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -55,7 +56,8 @@ def verify_api_key(api_key: str | None = Security(api_key_header)) -> str | None
             detail="API Key Required - Set X-API-Key Header"
         )
 
-    if api_key != settings.proximal_api_key:
+    # use secrets.compare_digest to prevent timing attacks
+    if not secrets.compare_digest(api_key, settings.proximal_api_key):
         raise HTTPException(
             status_code=401,
             detail="Invalid API Key"
