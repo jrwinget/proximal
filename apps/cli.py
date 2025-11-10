@@ -4,6 +4,7 @@ import typer
 import httpx
 import json
 import sys
+import os
 from typing import Optional, List, Dict
 from rich.console import Console
 from rich.table import Table
@@ -14,8 +15,16 @@ from rich.markdown import Markdown
 app = typer.Typer(help="Proximal CLI - Transform ideas into actionable project plans")
 console = Console()
 
-# default API URL, can be overridden with environment variables
-API_URL = "http://localhost:7315"
+# api configuration from environment
+API_URL = os.getenv("PROXIMAL_API_URL", "http://localhost:7315")
+API_KEY = os.getenv("PROXIMAL_API_KEY")
+
+def _get_headers() -> dict:
+    """get http headers including api key if configured"""
+    headers = {}
+    if API_KEY:
+        headers["X-API-Key"] = API_KEY
+    return headers
 
 
 @app.command()
@@ -46,7 +55,10 @@ def plan(
             # One-shot planning
             with console.status("Generating plan..."):
                 response = httpx.post(
-                    f"{API_URL}/plan", json={"message": goal}, timeout=60.0
+                    f"{API_URL}/plan",
+                    json={"message": goal},
+                    headers=_get_headers(),
+                    timeout=60.0
                 )
                 response.raise_for_status()
                 plan_data = response.json()
@@ -85,7 +97,10 @@ def _interactive_planning(goal: str) -> List[Dict]:
     # start conversation
     with console.status("Starting interactive planning session..."):
         response = httpx.post(
-            f"{API_URL}/conversation/start", json={"message": goal}, timeout=60.0
+            f"{API_URL}/conversation/start",
+            json={"message": goal},
+            headers=_get_headers(),
+            timeout=60.0
         )
         response.raise_for_status()
         result = response.json()
@@ -98,7 +113,7 @@ def _interactive_planning(goal: str) -> List[Dict]:
         if not questions:
             break
 
-        console.print("\n[bold blue]PlannerAgent needs some clarification:[/bold blue]")
+        console.print("\n[bold blue]PlannerAgent Needs Some Clarification:[/bold blue]")
 
         # display questions
         for i, question in enumerate(questions, 1):
@@ -113,7 +128,7 @@ def _interactive_planning(goal: str) -> List[Dict]:
         for i, question in enumerate(questions, 1):
             # show question context
             console.print(f"\n[bold]Question {i}:[/bold] {question}")
-            answer = Prompt.ask("[green]Your answer[/green]")
+            answer = Prompt.ask("[green]Your Answer[/green]")
             answers[question] = answer
 
         # send answers back
@@ -122,6 +137,7 @@ def _interactive_planning(goal: str) -> List[Dict]:
             response = httpx.post(
                 f"{API_URL}/conversation/continue",
                 json={"session_id": session_id, "answers": answers},
+                headers=_get_headers(),
                 timeout=60.0,
             )
             response.raise_for_status()
@@ -165,6 +181,7 @@ def breakdown(
             response = httpx.post(
                 f"{API_URL}/task/breakdown",
                 json={"task": task.model_dump(), "breakdown_type": breakdown_type},
+                headers=_get_headers(),
                 timeout=60.0,
             )
             response.raise_for_status()
@@ -261,13 +278,22 @@ def preferences(
             if task_size:
                 updates["preferred_task_size"] = task_size
 
-            response = httpx.put(f"{API_URL}/preferences", json=updates, timeout=30.0)
+            response = httpx.put(
+                f"{API_URL}/preferences",
+                json=updates,
+                headers=_get_headers(),
+                timeout=30.0
+            )
             response.raise_for_status()
-            console.print("[bold green]Preferences updated successfully![/bold green]")
+            console.print("[bold green]Preferences Updated Successfully![/bold green]")
 
         if show:
             # get current preferences
-            response = httpx.get(f"{API_URL}/preferences", timeout=30.0)
+            response = httpx.get(
+                f"{API_URL}/preferences",
+                headers=_get_headers(),
+                timeout=30.0
+            )
             response.raise_for_status()
             prefs = response.json()
 
@@ -345,13 +371,53 @@ def version():
 
 
 @app.command()
-def assist(goal: str = typer.Argument(..., help="Goal to achieve")):
-    """Plan and schedule tasks for a goal using Proximal."""
-    from packages.core.orchestrator import Orchestrator
+def assist(
+    goal: str = typer.Argument(..., help="Goal to achieve"),
+    output: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output file path (JSON format)"
+    ),
+    pretty: bool = typer.Option(True, help="Pretty print the output"),
+):
+    """
+    Plan and schedule tasks for a goal using the full orchestration pipeline.
 
-    orch = Orchestrator()
-    result = orch.run(goal)
-    console.print(json.dumps(result, indent=2))
+    This runs all 7 agents in sequence to create a comprehensive project plan.
+    """
+    from packages.core.orchestrator import Orchestrator
+    from packages.core.exceptions import OrchestratorError
+
+    console.print(f"[bold green]Orchestrating plan for:[/bold green] {goal}")
+
+    try:
+        orch = Orchestrator()
+
+        # use status spinner for long-running operation
+        with console.status("Running orchestration pipeline (this may take a moment)..."):
+            result = orch.run_sync(goal)
+
+        # save to file if requested
+        if output:
+            with open(output, "w") as f:
+                json.dump(result, f, indent=2 if pretty else None)
+            console.print(f"[bold green]Plan saved to:[/bold green] {output}")
+
+        # display result
+        if pretty:
+            _display_pretty_plan(result)
+        else:
+            console.print(json.dumps(result, indent=2))
+
+    except OrchestratorError as e:
+        console.print(f"[bold red]Orchestration Error:[/bold red] {str(e)}")
+        console.print("[dim]The orchestration pipeline encountered an error. Please check your goal and try again.[/dim]")
+        sys.exit(1)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Orchestration cancelled by user.[/yellow]")
+        sys.exit(0)
+    except Exception as e:
+        console.print(f"[bold red]Unexpected Error:[/bold red] {str(e)}")
+        console.print("[dim]An unexpected error occurred during orchestration.[/dim]")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

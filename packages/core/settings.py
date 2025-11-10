@@ -20,6 +20,34 @@ class Settings(BaseSettings):
     anthropic_base_url: str = "https://api.anthropic.com/v1"
     anthropic_model: str = "claude-3-haiku"
 
+    # api authentication (optional - if not set, api is open)
+    proximal_api_key: str | None = None
+
+    # api server configuration
+    api_host: str = "0.0.0.0"
+    api_port: int = 7315
+    api_workers: int = 1
+
+    # session configuration
+    session_timeout_hours: int = 1
+    max_clarifications: int = 2
+
+    # redis configuration (optional - for distributed sessions)
+    redis_url: str | None = None
+
+    # llm configuration
+    llm_timeout_seconds: int = 120
+    llm_max_retries: int = 3
+    llm_retry_min_wait: int = 4
+    llm_retry_max_wait: int = 10
+
+    # rate limiting configuration
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 10
+
+    # logging configuration
+    log_level: str = "INFO"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")

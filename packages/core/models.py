@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from enum import StrEnum
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 import uuid
 
 
@@ -14,18 +14,46 @@ class Priority(StrEnum):
 
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
-    title: str
-    detail: str
+    # task titles should be concise but meaningful, max 200 chars
+    title: str = Field(min_length=1, max_length=200)
+    # detailed descriptions can be longer, max 5000 chars
+    detail: str = Field(min_length=1, max_length=5000)
     priority: Priority
-    estimate_h: int = Field(gt=0)
+    # reasonable estimate cap: max 1000 hours (25 work weeks) prevents unrealistic values
+    estimate_h: int = Field(gt=0, le=1000)
     done: bool = False
+
+    @field_validator("title", "detail")
+    @classmethod
+    def validate_not_whitespace(cls, v: str, info) -> str:
+        """ensure strings contain actual content, not just whitespace"""
+        if not v or not v.strip():
+            field_name = info.field_name.replace("_", " ").title()
+            raise ValueError(f"{field_name} Cannot Be Empty Or Whitespace Only")
+        return v.strip()
 
 
 class Sprint(BaseModel):
-    name: str
+    # sprint names should be brief and descriptive, max 100 chars
+    name: str = Field(min_length=1, max_length=100)
     start: date
     end: date
     tasks: list[Task]
+
+    @field_validator("name")
+    @classmethod
+    def validate_name_not_whitespace(cls, v: str) -> str:
+        """ensure sprint name contains actual content, not just whitespace"""
+        if not v or not v.strip():
+            raise ValueError("Sprint Name Cannot Be Empty Or Whitespace Only")
+        return v.strip()
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "Sprint":
+        """ensure start date is before end date for logical sprint periods"""
+        if self.start >= self.end:
+            raise ValueError("Sprint Start Date Must Be Before End Date")
+        return self
 
 
 class MessageRole(StrEnum):
@@ -36,8 +64,17 @@ class MessageRole(StrEnum):
 
 class ConversationMessage(BaseModel):
     role: MessageRole
-    content: str
+    # conversation messages can be lengthy but need limits, max 50000 chars
+    content: str = Field(min_length=1, max_length=50000)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @field_validator("content")
+    @classmethod
+    def validate_content_not_whitespace(cls, v: str) -> str:
+        """ensure message content is not just whitespace"""
+        if not v or not v.strip():
+            raise ValueError("Message Content Cannot Be Empty Or Whitespace Only")
+        return v.strip()
 
 
 class ConversationState(BaseModel):
