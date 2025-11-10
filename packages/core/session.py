@@ -3,6 +3,7 @@ from typing import Dict, Optional, List
 from datetime import datetime, timedelta, timezone
 import json
 import os
+import asyncio
 
 from .models import (
     ConversationState,
@@ -14,6 +15,9 @@ from .memory import client as weaviate_client
 
 # in-memory session store
 _sessions: Dict[str, ConversationState] = {}
+
+# locks for preventing race conditions on session access
+_session_locks: Dict[str, asyncio.Lock] = {}
 
 # single-user preferences cache
 _preferences_cache: Optional[UserPreferences] = None
@@ -141,7 +145,14 @@ class SessionManager:
 
         self.sessions = _sessions
         self.session_timeout = timedelta(hours=settings.session_timeout_hours)
+        self.locks = _session_locks
         self._ensure_weaviate_schemas()
+
+    def _get_lock(self, session_id: str) -> asyncio.Lock:
+        """Get or create a lock for a specific session"""
+        if session_id not in self.locks:
+            self.locks[session_id] = asyncio.Lock()
+        return self.locks[session_id]
 
     def _ensure_weaviate_schemas(self):
         """Ensure Weaviate has required schemas"""
@@ -177,77 +188,89 @@ class SessionManager:
                 }
             )
 
-    def create_session(self, initial_goal: str) -> ConversationState:
+    async def create_session(self, initial_goal: str) -> ConversationState:
         """Create a new conversation session"""
         session = ConversationState(goal=initial_goal)
-        self.store.save(session)
+        lock = self._get_lock(session.session_id)
+        async with lock:
+            self.store.save(session)
         return session
 
-    def get_session(self, session_id: str) -> Optional[ConversationState]:
-        """Retrieve an active session"""
-        session = self.store.get(session_id)
-        if session and self._is_session_valid(session):
-            return session
-        if session:
-            # clean up expired session
-            self.store.delete(session_id)
-        return None
+    async def get_session(self, session_id: str) -> Optional[ConversationState]:
+        """Retrieve an active session with locking to prevent race conditions"""
+        lock = self._get_lock(session_id)
+        async with lock:
+            session = self.store.get(session_id)
+            if session and self._is_session_valid(session):
+                return session
+            if session:
+                # clean up expired session
+                self.store.delete(session_id)
+            return None
 
     def _is_session_valid(self, session: ConversationState) -> bool:
         """Check if session is still valid (not timed out)"""
         age = datetime.now(timezone.utc) - session.updated_at
         return age < self.session_timeout
 
-    def update_session(
+    async def update_session(
         self, session_id: str, role: MessageRole, content: str
     ) -> Optional[ConversationState]:
-        """Add a message to the session"""
-        session = self.get_session(session_id)
-        if not session:
-            return None
-        session.add_message(role, content)
-        if role == MessageRole.user:
-            session.clarification_count += 1
-        self.store.save(session)
-        return session
+        """Add a message to the session with locking to prevent race conditions"""
+        lock = self._get_lock(session_id)
+        async with lock:
+            session = self.store.get(session_id)
+            if not session or not self._is_session_valid(session):
+                return None
+            session.add_message(role, content)
+            if role == MessageRole.user:
+                session.clarification_count += 1
+            self.store.save(session)
+            return session
 
-    def complete_session(
+    async def complete_session(
         self, session_id: str, final_plan: Optional[List] = None
     ) -> None:
-        """Mark session as complete and persist to Weaviate"""
-        session = self.get_session(session_id)
-        if not session:
-            return
+        """Mark session as complete and persist to Weaviate with locking"""
+        lock = self._get_lock(session_id)
+        async with lock:
+            session = self.store.get(session_id)
+            if not session:
+                return
 
-        session.status = "completed"
+            session.status = "completed"
 
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
-            # clean up in-memory only
+            if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+                # clean up in-memory only
+                self.store.delete(session_id)
+                return
+
+            # prepare historical record
+            messages_data = []
+            for msg in session.messages:
+                d = msg.model_dump()
+                d["timestamp"] = msg.timestamp.isoformat()
+                messages_data.append(d)
+
+            history_data = {
+                "session_id": session.session_id,
+                "goal": session.goal,
+                "messages": json.dumps(messages_data),
+                "final_plan": json.dumps(final_plan) if final_plan is not None else None,
+                "created_at": session.created_at.isoformat(),
+            }
+
+            weaviate_client.data_object.create(
+                data_object=history_data,
+                class_name="ConversationHistory",
+            )
+
+            # clean up session store
             self.store.delete(session_id)
-            return
 
-        # prepare historical record
-        messages_data = []
-        for msg in session.messages:
-            d = msg.model_dump()
-            d["timestamp"] = msg.timestamp.isoformat()
-            messages_data.append(d)
-
-        history_data = {
-            "session_id": session.session_id,
-            "goal": session.goal,
-            "messages": json.dumps(messages_data),
-            "final_plan": json.dumps(final_plan) if final_plan is not None else None,
-            "created_at": session.created_at.isoformat(),
-        }
-
-        weaviate_client.data_object.create(
-            data_object=history_data,
-            class_name="ConversationHistory",
-        )
-
-        # clean up session store
-        self.store.delete(session_id)
+        # clean up lock after session is deleted
+        if session_id in self.locks:
+            del self.locks[session_id]
 
     def get_relevant_history(self, query: str, limit: int = 3) -> List[Dict]:
         """Retrieve relevant past conversations using vector search"""

@@ -1,8 +1,11 @@
-from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi import FastAPI, HTTPException, Security, Depends, Request
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Union, Literal
 import logging
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from .pipeline import DIRECT_PIPELINE, INTERACTIVE_PIPELINE
 from packages.core.session import session_manager
 from packages.core.models import (
@@ -29,6 +32,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# configure rate limiting
+limiter = Limiter(key_func=get_remote_address)
+rate_limit = f"{_settings.rate_limit_per_minute}/minute" if _settings.rate_limit_enabled else None
 
 # api key header for authentication
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
@@ -103,9 +110,14 @@ app = FastAPI(
     version="0.2.0",
 )
 
+# add rate limiting to app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 @app.post("/plan", response_model=List[Sprint])
-async def plan(goal: Goal, _: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def plan(request: Request, goal: Goal, _: str | None = Depends(verify_api_key)):
     """One-shot planning endpoint (backward compatible)"""
     initial_state = {"goal": goal.message}
     result = await DIRECT_PIPELINE.ainvoke(initial_state)
@@ -113,21 +125,22 @@ async def plan(goal: Goal, _: str | None = Depends(verify_api_key)):
 
 
 @app.post("/conversation/start", response_model=ConversationResponse)
-async def start_conversation(request: ConversationStart, _: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def start_conversation(request: Request, conv_request: ConversationStart, _: str | None = Depends(verify_api_key)):
     """Start an interactive planning conversation or update preferences only."""
     # if only updating preferences, update and return
-    if request.preferences:
+    if conv_request.preferences:
         current_prefs = session_manager.get_user_preferences()
-        for key, value in request.preferences.items():
+        for key, value in conv_request.preferences.items():
             if hasattr(current_prefs, key):
                 setattr(current_prefs, key, value)
         session_manager.save_user_preferences(current_prefs)
         return ConversationResponse(session_id="", type="")
 
     # else fall through to launching the pipeline
-    session = session_manager.create_session(request.message)
-    session.add_message(MessageRole.user, request.message)
-    initial_state = {"goal": request.message, "session_id": session.session_id}
+    session = await session_manager.create_session(conv_request.message)
+    session.add_message(MessageRole.user, conv_request.message)
+    initial_state = {"goal": conv_request.message, "session_id": session.session_id}
     result = await INTERACTIVE_PIPELINE.ainvoke(initial_state)
 
     # if clarifications needed, return questions
@@ -150,17 +163,18 @@ async def start_conversation(request: ConversationStart, _: str | None = Depends
 
 
 @app.post("/conversation/continue", response_model=ConversationResponse)
-async def continue_conversation(request: ConversationContinue, _: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def continue_conversation(request: Request, conv_continue: ConversationContinue, _: str | None = Depends(verify_api_key)):
     """Continue an existing conversation"""
-    session = session_manager.get_session(request.session_id)
+    session = await session_manager.get_session(conv_continue.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired")
 
     # record user's answers
-    if isinstance(request.answers, str):
-        answers_text = request.answers
+    if isinstance(conv_continue.answers, str):
+        answers_text = conv_continue.answers
     else:
-        answers_text = "\n".join(f"{q}: {a}" for q, a in request.answers.items())
+        answers_text = "\n".join(f"{q}: {a}" for q, a in conv_continue.answers.items())
     session.add_message(MessageRole.user, answers_text)
 
     # proceed directly to planning (integration + pipeline)
@@ -185,9 +199,10 @@ async def continue_conversation(request: ConversationContinue, _: str | None = D
 
 
 @app.get("/conversation/{session_id}")
-async def get_conversation(session_id: str, _: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def get_conversation(request: Request, session_id: str, _: str | None = Depends(verify_api_key)):
     """Get current conversation state"""
-    session = session_manager.get_session(session_id)
+    session = await session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired")
     return {
@@ -199,29 +214,32 @@ async def get_conversation(session_id: str, _: str | None = Depends(verify_api_k
 
 
 @app.post("/task/breakdown")
-async def breakdown_task(request: TaskBreakdownRequest, _: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def breakdown_task(request: Request, task_request: TaskBreakdownRequest, _: str | None = Depends(verify_api_key)):
     """Break down a task into subtasks or pomodoros"""
-    task = request.task
+    task = task_request.task
     if not task:
         raise HTTPException(status_code=400, detail="Task required")
-    breakdown = await breakdown_task_llm(task, request.breakdown_type)
+    breakdown = await breakdown_task_llm(task, task_request.breakdown_type)
     return {
         "task_id": task.id,
         "task_title": task.title,
-        "breakdown_type": request.breakdown_type,
+        "breakdown_type": task_request.breakdown_type,
         "breakdown": breakdown,
     }
 
 
 @app.get("/preferences")
-async def get_preferences(_: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def get_preferences(request: Request, _: str | None = Depends(verify_api_key)):
     """Get current user preferences"""
     prefs = session_manager.get_user_preferences()
     return prefs.model_dump()
 
 
 @app.put("/preferences")
-async def update_preferences(update: PreferencesUpdate, _: str | None = Depends(verify_api_key)):
+@limiter.limit(rate_limit or "1000/minute")
+async def update_preferences(request: Request, update: PreferencesUpdate, _: str | None = Depends(verify_api_key)):
     """Update user preferences"""
     current = session_manager.get_user_preferences()
     for key, value in update.model_dump(exclude_unset=True).items():
