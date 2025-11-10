@@ -52,31 +52,57 @@ class InMemoryStore(SessionStore):
 
 
 class RedisStore(SessionStore):
-    """Redis session store (requires Redis and pickle)"""
+    """Redis session store using JSON serialization (secure alternative to pickle)"""
 
     def __init__(self, url: str):
         import redis
-        import pickle
 
         self.client = redis.from_url(url)
-        self.pickle = pickle
 
     def get(self, session_id: str) -> Optional[ConversationState]:
+        """retrieve session from redis and deserialize from json"""
         data = self.client.get(session_id)
-        return self.pickle.loads(data) if data else None
+        if not data:
+            return None
+
+        try:
+            # decode bytes to string, then parse json
+            json_str = data.decode('utf-8')
+            session_dict = json.loads(json_str)
+            # use pydantic to reconstruct the model with validation
+            return ConversationState.model_validate(session_dict)
+        except (json.JSONDecodeError, ValueError) as e:
+            # corrupted data - delete and return None
+            self.delete(session_id)
+            return None
 
     def save(self, session: ConversationState) -> None:
-        data = self.pickle.dumps(session)
-        self.client.set(session.session_id, data)
+        """serialize session to json and store in redis"""
+        # convert pydantic model to dict, handling datetime serialization
+        session_dict = session.model_dump(mode='json')
+        # serialize to json string
+        json_str = json.dumps(session_dict)
+        # store in redis with optional expiry (24 hours)
+        self.client.set(session.session_id, json_str, ex=86400)
 
     def delete(self, session_id: str) -> None:
+        """remove session from redis"""
         self.client.delete(session_id)
 
     def all(self) -> Dict[str, ConversationState]:
+        """retrieve all sessions - use scan_iter to avoid blocking redis"""
         result = {}
-        for key in self.client.keys():
+        # use scan_iter instead of keys() to avoid blocking
+        for key in self.client.scan_iter(match="*"):
             raw = self.client.get(key)
-            result[key.decode()] = self.pickle.loads(raw)
+            if raw:
+                try:
+                    json_str = raw.decode('utf-8')
+                    session_dict = json.loads(json_str)
+                    result[key.decode()] = ConversationState.model_validate(session_dict)
+                except (json.JSONDecodeError, ValueError):
+                    # skip corrupted entries
+                    continue
         return result
 
 
