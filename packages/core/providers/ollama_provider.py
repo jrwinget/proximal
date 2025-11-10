@@ -5,6 +5,7 @@ from ..settings import get_settings
 
 from .base import BaseProvider
 from . import register_provider
+from .exceptions import EmptyResponseError, InvalidResponseError
 
 _SETTINGS = get_settings()
 
@@ -25,8 +26,28 @@ class OllamaProvider(BaseProvider):
         tools = kwargs.get("tools")
         if tools:
             payload["tools"] = tools
+
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
-            return data["choices"][0]["message"]["content"]
+
+            # validate response structure before accessing nested fields
+            if "choices" not in data:
+                raise InvalidResponseError("Ollama Response Missing 'choices' Field")
+
+            if not data["choices"] or len(data["choices"]) == 0:
+                raise EmptyResponseError("Ollama Response Has Empty Choices Array")
+
+            choice = data["choices"][0]
+            if "message" not in choice:
+                raise InvalidResponseError("Ollama Choice Missing 'message' Field")
+
+            if "content" not in choice["message"]:
+                raise InvalidResponseError("Ollama Message Missing 'content' Field")
+
+            content = choice["message"]["content"]
+            if content is None:
+                raise EmptyResponseError("Ollama Message Content Is None")
+
+            return content
