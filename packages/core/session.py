@@ -3,11 +3,10 @@ from typing import Dict, Optional, List
 from datetime import datetime, timedelta, timezone
 import json
 import os
-import asyncio
+import threading
 
 from .models import (
     ConversationState,
-    ConversationMessage,
     MessageRole,
     UserPreferences,
 )
@@ -17,7 +16,7 @@ from .memory import client as weaviate_client
 _sessions: Dict[str, ConversationState] = {}
 
 # locks for preventing race conditions on session access
-_session_locks: Dict[str, asyncio.Lock] = {}
+_session_locks: Dict[str, threading.Lock] = {}
 
 # single-user preferences cache
 _preferences_cache: Optional[UserPreferences] = None
@@ -65,6 +64,9 @@ class RedisStore(SessionStore):
 
     def get(self, session_id: str) -> Optional[ConversationState]:
         """retrieve session from redis and deserialize from json"""
+        import logging
+        logger = logging.getLogger(__name__)
+
         data = self.client.get(session_id)
         if not data:
             return None
@@ -77,6 +79,7 @@ class RedisStore(SessionStore):
             return ConversationState.model_validate(session_dict)
         except (json.JSONDecodeError, ValueError) as e:
             # corrupted data - delete and return None
+            logger.warning(f"Failed to deserialize session {session_id}: {e}")
             self.delete(session_id)
             return None
 
@@ -148,10 +151,10 @@ class SessionManager:
         self.locks = _session_locks
         self._ensure_weaviate_schemas()
 
-    def _get_lock(self, session_id: str) -> asyncio.Lock:
+    def _get_lock(self, session_id: str) -> threading.Lock:
         """Get or create a lock for a specific session"""
         if session_id not in self.locks:
-            self.locks[session_id] = asyncio.Lock()
+            self.locks[session_id] = threading.Lock()
         return self.locks[session_id]
 
     def _ensure_weaviate_schemas(self):
@@ -188,18 +191,18 @@ class SessionManager:
                 }
             )
 
-    async def create_session(self, initial_goal: str) -> ConversationState:
-        """Create a new conversation session"""
+    def create_session(self, initial_goal: str) -> ConversationState:
+        """Create a new conversation session with locking"""
         session = ConversationState(goal=initial_goal)
         lock = self._get_lock(session.session_id)
-        async with lock:
+        with lock:
             self.store.save(session)
         return session
 
-    async def get_session(self, session_id: str) -> Optional[ConversationState]:
+    def get_session(self, session_id: str) -> Optional[ConversationState]:
         """Retrieve an active session with locking to prevent race conditions"""
         lock = self._get_lock(session_id)
-        async with lock:
+        with lock:
             session = self.store.get(session_id)
             if session and self._is_session_valid(session):
                 return session
@@ -213,12 +216,12 @@ class SessionManager:
         age = datetime.now(timezone.utc) - session.updated_at
         return age < self.session_timeout
 
-    async def update_session(
+    def update_session(
         self, session_id: str, role: MessageRole, content: str
     ) -> Optional[ConversationState]:
         """Add a message to the session with locking to prevent race conditions"""
         lock = self._get_lock(session_id)
-        async with lock:
+        with lock:
             session = self.store.get(session_id)
             if not session or not self._is_session_valid(session):
                 return None
@@ -228,12 +231,12 @@ class SessionManager:
             self.store.save(session)
             return session
 
-    async def complete_session(
+    def complete_session(
         self, session_id: str, final_plan: Optional[List] = None
     ) -> None:
         """Mark session as complete and persist to Weaviate with locking"""
         lock = self._get_lock(session_id)
-        async with lock:
+        with lock:
             session = self.store.get(session_id)
             if not session:
                 return
@@ -243,6 +246,9 @@ class SessionManager:
             if os.getenv("SKIP_WEAVIATE_CONNECTION"):
                 # clean up in-memory only
                 self.store.delete(session_id)
+                # clean up lock after session is deleted
+                if session_id in self.locks:
+                    del self.locks[session_id]
                 return
 
             # prepare historical record

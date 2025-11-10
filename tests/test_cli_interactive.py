@@ -81,7 +81,7 @@ class TestInteractivePlanning:
         # verify success
         assert result.exit_code == 0
         assert "Interactive Planning: Build a mobile app" in result.stdout
-        assert "PlannerAgent needs some clarification" in result.stdout
+        assert "PlannerAgent Needs Some Clarification" in result.stdout
 
         # verify api calls
         assert mock_post.call_count == 2
@@ -285,7 +285,7 @@ class TestPreferences:
 
         # verify success
         assert result.exit_code == 0
-        assert "Preferences updated successfully" in result.stdout
+        assert "Preferences Updated Successfully" in result.stdout
 
         # verify PUT was called with correct data
         mock_put.assert_called_once()

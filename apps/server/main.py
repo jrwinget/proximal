@@ -138,7 +138,7 @@ async def start_conversation(request: Request, conv_request: ConversationStart, 
         return ConversationResponse(session_id="", type="")
 
     # else fall through to launching the pipeline
-    session = await session_manager.create_session(conv_request.message)
+    session = session_manager.create_session(conv_request.message)
     session.add_message(MessageRole.user, conv_request.message)
     initial_state = {"goal": conv_request.message, "session_id": session.session_id}
     result = await INTERACTIVE_PIPELINE.ainvoke(initial_state)
@@ -166,7 +166,7 @@ async def start_conversation(request: Request, conv_request: ConversationStart, 
 @limiter.limit(rate_limit or "1000/minute")
 async def continue_conversation(request: Request, conv_continue: ConversationContinue, _: str | None = Depends(verify_api_key)):
     """Continue an existing conversation"""
-    session = await session_manager.get_session(conv_continue.session_id)
+    session = session_manager.get_session(conv_continue.session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired")
 
@@ -202,7 +202,7 @@ async def continue_conversation(request: Request, conv_continue: ConversationCon
 @limiter.limit(rate_limit or "1000/minute")
 async def get_conversation(request: Request, session_id: str, _: str | None = Depends(verify_api_key)):
     """Get current conversation state"""
-    session = await session_manager.get_session(session_id)
+    session = session_manager.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found or expired")
     return {
