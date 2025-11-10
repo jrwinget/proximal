@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     anthropic_base_url: str = "https://api.anthropic.com/v1"
     anthropic_model: str = "claude-3-haiku"
 
+    # api authentication (optional - if not set, api is open)
+    proximal_api_key: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")

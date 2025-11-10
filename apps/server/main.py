@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Security, Depends
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Union, Literal
+import logging
 from .pipeline import DIRECT_PIPELINE, INTERACTIVE_PIPELINE
 from packages.core.session import session_manager
 from packages.core.models import (
@@ -18,19 +20,50 @@ from packages.core.agents import (
     estimate_llm,
     package_llm,
 )
+from packages.core.settings import get_settings
+
+logger = logging.getLogger(__name__)
+
+# api key header for authentication
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+def verify_api_key(api_key: str | None = Security(api_key_header)) -> str | None:
+    """verify api key if configured, otherwise allow all requests"""
+    settings = get_settings()
+
+    # if no api key is configured, allow all requests (development mode)
+    if not settings.proximal_api_key:
+        return None
+
+    # if api key is configured, verify it matches
+    if api_key is None:
+        raise HTTPException(
+            status_code=401,
+            detail="API Key Required - Set X-API-Key Header"
+        )
+
+    if api_key != settings.proximal_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API Key"
+        )
+
+    return api_key
 
 
 class Goal(BaseModel):
-    message: str
+    # goal/message input should be meaningful but not excessive, max 10000 chars
+    message: str = Field(min_length=1, max_length=10000)
 
 
 class ConversationStart(BaseModel):
-    message: str
+    # initial message for conversation, max 10000 chars
+    message: str = Field(min_length=1, max_length=10000)
     preferences: Optional[Dict] = None  # allow updating preferences
 
 
 class ConversationContinue(BaseModel):
-    session_id: str
+    session_id: str = Field(min_length=1, max_length=100)
     answers: Union[str, Dict[str, str]]  # single answer / question->answer mapping
 
 
@@ -66,7 +99,7 @@ app = FastAPI(
 
 
 @app.post("/plan", response_model=List[Sprint])
-async def plan(goal: Goal):
+async def plan(goal: Goal, _: str | None = Depends(verify_api_key)):
     """One-shot planning endpoint (backward compatible)"""
     initial_state = {"goal": goal.message}
     result = await DIRECT_PIPELINE.ainvoke(initial_state)
@@ -74,7 +107,7 @@ async def plan(goal: Goal):
 
 
 @app.post("/conversation/start", response_model=ConversationResponse)
-async def start_conversation(request: ConversationStart):
+async def start_conversation(request: ConversationStart, _: str | None = Depends(verify_api_key)):
     """Start an interactive planning conversation or update preferences only."""
     # if only updating preferences, update and return
     if request.preferences:
@@ -111,7 +144,7 @@ async def start_conversation(request: ConversationStart):
 
 
 @app.post("/conversation/continue", response_model=ConversationResponse)
-async def continue_conversation(request: ConversationContinue):
+async def continue_conversation(request: ConversationContinue, _: str | None = Depends(verify_api_key)):
     """Continue an existing conversation"""
     session = session_manager.get_session(request.session_id)
     if not session:
@@ -146,7 +179,7 @@ async def continue_conversation(request: ConversationContinue):
 
 
 @app.get("/conversation/{session_id}")
-async def get_conversation(session_id: str):
+async def get_conversation(session_id: str, _: str | None = Depends(verify_api_key)):
     """Get current conversation state"""
     session = session_manager.get_session(session_id)
     if not session:
@@ -160,7 +193,7 @@ async def get_conversation(session_id: str):
 
 
 @app.post("/task/breakdown")
-async def breakdown_task(request: TaskBreakdownRequest):
+async def breakdown_task(request: TaskBreakdownRequest, _: str | None = Depends(verify_api_key)):
     """Break down a task into subtasks or pomodoros"""
     task = request.task
     if not task:
@@ -175,14 +208,14 @@ async def breakdown_task(request: TaskBreakdownRequest):
 
 
 @app.get("/preferences")
-async def get_preferences():
+async def get_preferences(_: str | None = Depends(verify_api_key)):
     """Get current user preferences"""
     prefs = session_manager.get_user_preferences()
     return prefs.model_dump()
 
 
 @app.put("/preferences")
-async def update_preferences(update: PreferencesUpdate):
+async def update_preferences(update: PreferencesUpdate, _: str | None = Depends(verify_api_key)):
     """Update user preferences"""
     current = session_manager.get_user_preferences()
     for key, value in update.model_dump(exclude_unset=True).items():
