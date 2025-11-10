@@ -110,10 +110,37 @@ class SessionManager:
     """Manages conversation sessions with pluggable store"""
 
     def __init__(self, store: SessionStore = None):
-        # default to in-memory store
-        self.store = store or InMemoryStore()
+        from .settings import get_settings
+        settings = get_settings()
+
+        # use redis if configured, otherwise fall back to in-memory with warning
+        if store:
+            self.store = store
+        elif settings.redis_url:
+            try:
+                import logging
+                logger = logging.getLogger(__name__)
+                self.store = RedisStore(settings.redis_url)
+                logger.info("Using Redis For Session Storage")
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.warning(
+                    f"Failed To Connect To Redis ({settings.redis_url}): {e}. "
+                    "Falling Back To In-Memory Sessions - Data Will Be Lost On Restart"
+                )
+                self.store = InMemoryStore()
+        else:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "Using In-Memory Sessions - Data Will Be Lost On Restart. "
+                "Set REDIS_URL For Production Deployments"
+            )
+            self.store = InMemoryStore()
+
         self.sessions = _sessions
-        self.session_timeout = timedelta(hours=1)
+        self.session_timeout = timedelta(hours=settings.session_timeout_hours)
         self._ensure_weaviate_schemas()
 
     def _ensure_weaviate_schemas(self):
@@ -224,6 +251,9 @@ class SessionManager:
 
     def get_relevant_history(self, query: str, limit: int = 3) -> List[Dict]:
         """Retrieve relevant past conversations using vector search"""
+        import logging
+        logger = logging.getLogger(__name__)
+
         if os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return []
         try:
@@ -252,11 +282,14 @@ class SessionManager:
                     }
                 )
             return out
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed To Retrieve History From Weaviate: {e}")
             return []
 
     def get_user_preferences(self, user_id: str = "default") -> UserPreferences:
         """Get user preferences from cache or Weaviate"""
+        import logging
+        logger = logging.getLogger(__name__)
         global _preferences_cache
 
         if _preferences_cache and _preferences_cache.user_id == user_id:
@@ -285,14 +318,16 @@ class SessionManager:
                 data = json.loads(prefs_list[0]["preferences"])
                 _preferences_cache = UserPreferences(**data)
                 return _preferences_cache
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed To Load Preferences From Weaviate: {e}")
 
         _preferences_cache = UserPreferences(user_id=user_id)
         return _preferences_cache
 
     def save_user_preferences(self, preferences: UserPreferences):
         """Save user preferences to Weaviate and cache in memory"""
+        import logging
+        logger = logging.getLogger(__name__)
         global _preferences_cache
         _preferences_cache = preferences
 
@@ -307,8 +342,8 @@ class SessionManager:
                 data_object=pref_data,
                 class_name="UserPreferences",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed To Save Preferences To Weaviate: {e}")
 
 
 session_manager = SessionManager()

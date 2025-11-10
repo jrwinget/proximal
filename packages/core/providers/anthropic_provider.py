@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from anthropic import AsyncAnthropic
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from ..settings import get_settings
 
 from .base import BaseProvider
@@ -25,6 +26,16 @@ class AnthropicProvider(BaseProvider):
             )
         return self._client
 
+    @retry(
+        stop=stop_after_attempt(_SETTINGS.llm_max_retries),
+        wait=wait_exponential(
+            multiplier=1,
+            min=_SETTINGS.llm_retry_min_wait,
+            max=_SETTINGS.llm_retry_max_wait
+        ),
+        retry=retry_if_exception_type((ConnectionError, TimeoutError)),
+        reraise=True
+    )
     async def chat_complete(self, messages: list[dict], **kwargs: object) -> str:
         tools = kwargs.get("tools")
         client = self._get_client()
@@ -35,6 +46,7 @@ class AnthropicProvider(BaseProvider):
             messages=anthropic_messages,
             max_tokens=4096,
             tools=tools,
+            timeout=_SETTINGS.llm_timeout_seconds,
         )
 
         # validate response structure before accessing

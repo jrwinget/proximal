@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Union, Literal
 import logging
 from .pipeline import DIRECT_PIPELINE, INTERACTIVE_PIPELINE
@@ -22,6 +22,12 @@ from packages.core.agents import (
 )
 from packages.core.settings import get_settings
 
+# configure logging based on settings
+_settings = get_settings()
+logging.basicConfig(
+    level=getattr(logging, _settings.log_level.upper(), logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # api key header for authentication

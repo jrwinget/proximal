@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import httpx
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from ..settings import get_settings
 
 from .base import BaseProvider
@@ -20,6 +21,16 @@ class OllamaProvider(BaseProvider):
             base = f"http://{base}"
         return f"{base}/v1/chat/completions"
 
+    @retry(
+        stop=stop_after_attempt(_SETTINGS.llm_max_retries),
+        wait=wait_exponential(
+            multiplier=1,
+            min=_SETTINGS.llm_retry_min_wait,
+            max=_SETTINGS.llm_retry_max_wait
+        ),
+        retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException)),
+        reraise=True
+    )
     async def chat_complete(self, messages: list[dict], **kwargs: object) -> str:
         url = self._get_url()
         payload = {"model": _SETTINGS.ollama_model, "messages": messages}
@@ -27,7 +38,7 @@ class OllamaProvider(BaseProvider):
         if tools:
             payload["tools"] = tools
 
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with httpx.AsyncClient(timeout=_SETTINGS.llm_timeout_seconds) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
