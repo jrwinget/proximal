@@ -1,10 +1,3 @@
-"""
-OpenAI provider with 2025 best practices:
-- Observability and LLM call tracking
-- Circuit breaker for failing services
-- Enhanced error handling with proper categorization
-- Token usage tracking for cost monitoring
-"""
 from __future__ import annotations
 import time
 import logging
@@ -32,15 +25,6 @@ logger = logging.getLogger(__name__)
 
 @register_provider("openai")
 class OpenAIProvider(BaseProvider):
-    """
-    OpenAI chat completion provider with enhanced observability and fault tolerance.
-
-    Following 2025 best practices:
-    - Circuit breaker pattern for resilience
-    - Token usage tracking for cost monitoring
-    - Structured logging for all LLM calls
-    - Proper error categorization (retriable vs non-retriable)
-    """
 
     def __init__(self) -> None:
         self._client: AsyncOpenAI | None = None

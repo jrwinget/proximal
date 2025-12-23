@@ -1,13 +1,3 @@
-"""
-Orchestrator for coordinating multi-agent workflows.
-
-Following 2025 best practices:
-- Supervisor pattern with specialized agents
-- Full observability and tracing
-- Fault tolerance with timeouts
-- Parallel agent execution
-- Graceful degradation
-"""
 from __future__ import annotations
 import asyncio
 import logging

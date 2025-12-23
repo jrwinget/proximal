@@ -1,12 +1,3 @@
-"""
-Fault tolerance patterns for multi-agent systems.
-
-Following 2025 best practices:
-- Circuit breaker pattern for failing services
-- Graceful degradation
-- Per-node timeouts
-- Smart retry policies with exponential backoff
-"""
 from __future__ import annotations
 import asyncio
 import time

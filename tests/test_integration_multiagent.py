@@ -1,12 +1,3 @@
-"""
-Integration tests for multi-agent workflows.
-
-Following 2025 best practices:
-- Test individual agents in isolation
-- Test multi-agent coordination
-- Test fault tolerance and error recovery
-- Test agent handoffs and state management
-"""
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import asyncio

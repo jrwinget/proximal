@@ -1,12 +1,3 @@
-"""
-Observability and tracing infrastructure for multi-agent systems.
-
-Following 2025 best practices:
-- Full production tracing for all agent operations
-- Structured logging with context
-- Performance metrics tracking
-- Agent-level monitoring
-"""
 from __future__ import annotations
 import logging
 import time

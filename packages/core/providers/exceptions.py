@@ -1,11 +1,3 @@
-"""
-Exceptions for LLM provider errors.
-
-Following 2025 best practices for error categorization:
-- Retriable errors (transient failures)
-- Non-retriable errors (client errors)
-- Rate limit errors (need backoff)
-"""
 from typing import Optional
 
 
