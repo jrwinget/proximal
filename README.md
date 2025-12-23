@@ -1,7 +1,6 @@
-# Proximal 🌿
+# `proximal` 🌿
 
 <!-- badges: start -->
-[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -9,203 +8,138 @@
 [![Plugins](https://img.shields.io/badge/plugins-enabled-brightgreen.svg)](docs/plugins.md)
 <!-- badges: end -->
 
-**Proximal** is a multi‑agent framework that turns vague ideas into structured, sprint‑ready plans — with a special focus on supporting neurodiverse workflows.
-The public command‑line interface is called **`proximal`**, powered under the hood by a manager‑style **Orchestrator** that coordinates multiple specialist agents.
+**Your AI planning partner that meets you where you are.**
 
-## ✨ Core Capabilities
+`proximal` transforms fuzzy thoughts into actionable plans through conversation. Built specifically for neurodiverse minds, it helps bridge the gap between "I should do this" and actually getting it done — without the overwhelm.
 
-| Capability | Description |
-|------------|-------------|
-| Natural‐language planning | Understands high‑level project goals and clarifies hidden requirements interactively |
-| Sprint breakdown | Generates sprint / task hierarchies with effort estimates and priorities |
-| Scheduling | Time‑boxes tasks into a daily or weekly calendar via the **Chronos** agent |
-| Well‑being nudges | Injects breaks and self‑care checkpoints via the **Guardian** agent |
-| Memory & context | Stores plans and preferences in a vector DB for future sessions |
-| Multi‑provider LLMs | Works with local **Ollama**, **OpenAI**, or **Anthropic** models out‑of‑the‑box |
-| Plug‑in architecture | Extend agents or providers via entry points |
-| Production‑ready | Rate limiting, API authentication, Redis sessions, retry logic, structured logging |
+> *"I know what I want to do, I just can't figure out where to start."*
 
-## 🤖 Agents
+`proximal` gets it. We work with how your brain actually works, not how productivity gurus think it should.
 
-| Agent | Responsibility |
-|-------|---------------|
-| **Planner** | Task & sprint decomposition |
-| **Chronos** | Scheduling & calendar management |
-| **Guardian** | Well‑being nudges & break reminders |
-| **Mentor** | Goal‑coaching & motivation |
-| **Scribe** | Memory & note capture |
-| **Liaison** | Communication drafts |
-| **FocusBuddy** | Focus / Pomodoro support |
+## 💡 Why `proximal`?
 
-All agents register automatically via a plugin decorator and are discoverable by the Orchestrator for easy extension.
+### Built for Neurodiverse Minds
 
-## 🚀 Quick Start
+**Executive Function Support**
+- **Task Initiation**: Breaks down "I want to build X" into concrete first steps
+- **Working Memory**: Remembers your preferences, past conversations, and context so you don't have to
+- **Planning & Organization**: Transforms abstract goals into structured, bite-sized actions
+- **Time Management**: Realistic estimates based on your actual capacity, not idealized productivity
 
-### Prerequisites
-* Python **3.12+**
-* At least one LLM backend
-  * **Ollama** running locally **or**
-  * **OpenAI** API key **or**
-  * **Anthropic** API key
-* (Optional) **Weaviate** instance for long‑term memory
+**ADHD-Friendly Features**
+- **Low Barrier to Entry**: Just describe what you want — no templates, no forms, no "correct" format
+- **Interactive Clarification**: Asks questions when you're vague (because sometimes we don't know exactly what we mean yet)
+- **Focus Support**: Pomodoro task breakdowns when you need hyper-focus sessions
+- **Break Reminders**: The Guardian agent suggests breaks before burnout hits
 
-### Installation
+**Autistic-Friendly Design**
+- **Clear Communication**: Direct, unambiguous task descriptions and expectations
+- **Predictable Structure**: Consistent task hierarchies and priority systems
+- **Reduced Decision Fatigue**: Agents handle scheduling, prioritization, and planning overhead
+- **Sensory Considerations**: Text-based interface with no unnecessary notifications or interruptions
+
+**For Everyone Who Struggles With Executive Function**
+- Depression, anxiety, chronic fatigue, or just... life
+- `proximal` doesn't judge your energy levels or capacity
+- Works with you on good days *and* difficult days
+
+## 🤖 Your Support Team
+
+`proximal` uses 7 specialized AI agents that work together like a personal support team:
+
+| Agent | What They Do For You |
+|-------|---------------------|
+| **Planner** | Breaks down overwhelming projects into manageable pieces |
+| **Chronos** | Helps you realistically schedule tasks around your life |
+| **Guardian** | Reminds you to take breaks and prioritize self-care |
+| **Mentor** | Provides encouragement and helps you stay motivated |
+| **Scribe** | Remembers important details so your working memory doesn't have to |
+| **Liaison** | Helps draft emails and messages when words are hard |
+| **FocusBuddy** | Creates focused work sessions when you need deep work |
+
+Each agent handles one thing well, so you're not overwhelmed by a single "do everything" AI.
+
+## 🚀 Getting Started
+
+### What You Need
+* Python 3.12 or newer
+* An AI provider (pick one):
+  * **Ollama** (free, runs on your computer)
+  * **OpenAI** (paid, API key needed)
+  * **Anthropic** (paid, API key needed)
+
+### Setup
 ```bash
+# Download proximal
 git clone https://github.com/jrwinget/proximal.git
 cd proximal
 
-# recommended: use a virtual environment
+# Create a virtual environment (recommended)
 python3 -m venv .venv
-source .venv/bin/activate  # on Windows: .venv\Scripts\activate
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
+# Install
 pip install -e .
 
-# copy and edit environment settings
+# Configure your AI provider
 cp .env.example .env
+# Edit .env with your settings
 ```
 
-### First plan
+### Try It Out
 ```bash
-# plan‑only flow
+# Simple planning
 proximal plan "Redesign my personal website"
 
-# interactive planning with clarification questions
+# Interactive mode (asks clarifying questions)
 proximal plan "Build a mobile app" --interactive
 
-# break down tasks into subtasks or pomodoro tasks
-proximal breakdown "Implement user authentication" --hours 8 --type subtasks
+# Break tasks into smaller pieces
+proximal breakdown "Implement user authentication" --hours 8
 
-# full multi‑agent flow (plan + schedule)
-proximal assist "Launch a marketing campaign next quarter"
+# Get the full team working for you
+proximal assist "Launch a marketing campaign"
 ```
 
-## 🖥️ API Server
+## 🌐 Use as a Web Service (Optional)
+
+Want to integrate `proximal` into your own app? Run it as an API server:
 
 ```bash
-# start FastAPI server on http://localhost:7315
-python -m apps.server.main
-
-# or use the CLI shortcut
 proximal server
+# Runs on http://localhost:7315
 ```
 
-### Security Features
-- **API Authentication**: Optional API key protection (set `PROXIMAL_API_KEY` in `.env`)
-- **Rate Limiting**: Configurable per-minute limits (default: 10 requests/minute)
-- **Input Validation**: Pydantic models with field constraints
-- **Session Management**: Redis-backed sessions for production (with in-memory fallback)
-- **Structured Logging**: Comprehensive logging with configurable levels
+The API lets you build planning into web apps, mobile apps, or other tools. Optional API key authentication and rate limiting included for production use.
 
-### Endpoints
-| Method | Path | Description | Authentication |
-|--------|------|-------------|----------------|
-| `POST` | `/plan` | Return sprint/task plan (Planner only) | Optional |
-| `POST` | `/conversation/start` | Start interactive planning session | Optional |
-| `POST` | `/conversation/continue` | Continue conversation with answers | Optional |
-| `GET` | `/conversation/{session_id}` | Get conversation state | Optional |
-| `POST` | `/task/breakdown` | Break down task into subtasks/pomodoro tasks | Optional |
-| `GET/PUT` | `/preferences` | View/update user preferences | Optional |
-| `GET` | `/health` | Health check endpoint | None |
+See the [API documentation](docs/API.md) for endpoints and examples.
 
-Example:
-```python
-from httpx import post
+## ⚙️ Configuration
 
-# Headers for authenticated requests
-headers = {"X-API-Key": "your-secret-api-key"}
+Edit your `.env` file to set up your AI provider:
 
-# One-shot planning
-resp = post(
-  "http://localhost:7315/plan",
-  json={"message": "Build a habit‑tracking mobile app"},
-  headers=headers
-)
-print(resp.json())
-
-# Interactive planning
-resp = post(
-  "http://localhost:7315/conversation/start",
-  json={"message": "Build a habit‑tracking mobile app"},
-  headers=headers
-)
-print(resp.json())
-```
-
-## 🗂️ Project Layout
-```
-proximal/
-├── apps/
-│   ├── server/              # FastAPI app
-│   └── cli.py               # proximal CLI (entry point)
-├── packages/
-│   └── core/
-│       ├── agents/          # All 7 agents implemented
-│       ├── integrations/    # Calendar, email, automation
-│       ├── providers/       # LLM provider abstractions
-│       ├── orchestrator.py
-│       └── ...
-└── tests/                   # pytest suite
-```
-
-## ⚙️ Configuration (`.env`)
-
+**For Ollama (free, local)**
 ```env
-# === LLM Provider (required) ===
-# choose your provider: ollama | openai | anthropic
 PROVIDER_NAME=ollama
-
-# Ollama
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3:70b-instruct
-
-# OpenAI
-# OPENAI_API_KEY=sk-...
-# OPENAI_BASE_URL=https://api.openai.com/v1
-# OPENAI_MODEL=gpt-4o-mini
-
-# Anthropic
-# ANTHROPIC_API_KEY=sk-...
-# ANTHROPIC_BASE_URL=https://api.anthropic.com/v1
-# ANTHROPIC_MODEL=claude-3-haiku
-
-# === API Server Configuration (optional) ===
-# PROXIMAL_API_KEY=your-secret-api-key-here  # if not set, API is open
-# API_HOST=0.0.0.0
-# API_PORT=7315
-# API_WORKERS=1
-
-# === Session Management (optional) ===
-# SESSION_TIMEOUT_HOURS=1
-# MAX_CLARIFICATIONS=2
-# REDIS_URL=redis://localhost:6379  # recommended for production
-
-# === LLM Configuration (optional) ===
-# LLM_TIMEOUT_SECONDS=120
-# LLM_MAX_RETRIES=3
-# LLM_RETRY_MIN_WAIT=4
-# LLM_RETRY_MAX_WAIT=10
-
-# === Rate Limiting (optional) ===
-# RATE_LIMIT_ENABLED=true
-# RATE_LIMIT_PER_MINUTE=10
-
-# === Logging (optional) ===
-# LOG_LEVEL=INFO
-
-# === Weaviate (optional) ===
-# WEAVIATE_URL=http://localhost:8080
-# WEAVIATE_API_KEY=  # if authentication is enabled
-# SKIP_WEAVIATE_CONNECTION=1  # set to 1 when running tests without Weaviate
 ```
 
-## 🛠️ Development
-
-```bash
-pip install -e ".[dev]"
-pytest -q            # run entire suite
+**For OpenAI**
+```env
+PROVIDER_NAME=openai
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4o-mini
 ```
 
-Atomic commits and green tests are required for PRs. See **docs/CONTRIBUTING.md** for code‑style, commit‑message, and DCO details.
+**For Anthropic**
+```env
+PROVIDER_NAME=anthropic
+ANTHROPIC_API_KEY=sk-your-key-here
+ANTHROPIC_MODEL=claude-3-haiku
+```
+
+That's it for basic use! See `.env.example` for optional settings like API authentication, session management, and logging.
 
 ## 📍 Road map (next milestones)
 
@@ -216,6 +150,6 @@ Atomic commits and green tests are required for PRs. See **docs/CONTRIBUTING.md*
 - [ ] Advanced analytics dashboard
 
 ## 📝 License
-**AGPL‑3.0** — see [LICENSE](LICENSE) for details.
+**AGPL‑3.0**, see [LICENSE](LICENSE) for details.
 
-> *Proximal — Growing ideas into reality, one task at a time.* 🌱
+> *`proximal` — Growing ideas into reality, one task at a time.* 🌱
