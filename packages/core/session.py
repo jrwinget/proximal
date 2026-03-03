@@ -3,6 +3,7 @@ from typing import Dict, Optional, List
 from datetime import datetime, timedelta, timezone
 import json
 import os
+import asyncio
 import threading
 
 from .models import (
@@ -10,7 +11,23 @@ from .models import (
     MessageRole,
     UserPreferences,
 )
-from .memory import client as weaviate_client
+from . import memory
+from .events import Event, Topics, get_event_bus
+
+
+def _try_publish(bus, event: Event) -> None:
+    """Fire-and-forget event publish; never raises."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        loop.create_task(bus.publish(event))
+    else:
+        # no running loop; skip publish silently
+        pass
+
 
 # in-memory session store
 _sessions: Dict[str, ConversationState] = {}
@@ -65,6 +82,7 @@ class RedisStore(SessionStore):
     def get(self, session_id: str) -> Optional[ConversationState]:
         """retrieve session from redis and deserialize from json"""
         import logging
+
         logger = logging.getLogger(__name__)
 
         data = self.client.get(session_id)
@@ -73,7 +91,7 @@ class RedisStore(SessionStore):
 
         try:
             # decode bytes to string, then parse json
-            json_str = data.decode('utf-8')
+            json_str = data.decode("utf-8")
             session_dict = json.loads(json_str)
             # use pydantic to reconstruct the model with validation
             return ConversationState.model_validate(session_dict)
@@ -86,7 +104,7 @@ class RedisStore(SessionStore):
     def save(self, session: ConversationState) -> None:
         """serialize session to json and store in redis"""
         # convert pydantic model to dict, handling datetime serialization
-        session_dict = session.model_dump(mode='json')
+        session_dict = session.model_dump(mode="json")
         # serialize to json string
         json_str = json.dumps(session_dict)
         # store in redis with optional expiry (24 hours)
@@ -104,13 +122,33 @@ class RedisStore(SessionStore):
             raw = self.client.get(key)
             if raw:
                 try:
-                    json_str = raw.decode('utf-8')
+                    json_str = raw.decode("utf-8")
                     session_dict = json.loads(json_str)
-                    result[key.decode()] = ConversationState.model_validate(session_dict)
+                    result[key.decode()] = ConversationState.model_validate(
+                        session_dict
+                    )
                 except (json.JSONDecodeError, ValueError):
                     # skip corrupted entries
                     continue
         return result
+
+
+def _run_async(coro):
+    """Run an async coroutine from synchronous code."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        # we're inside an async context; create a task but can't await here
+        # use a new event loop in a thread
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
 
 
 class SessionManager:
@@ -118,6 +156,7 @@ class SessionManager:
 
     def __init__(self, store: SessionStore = None):
         from .settings import get_settings
+
         settings = get_settings()
 
         # use redis if configured, otherwise fall back to in-memory with warning
@@ -126,11 +165,13 @@ class SessionManager:
         elif settings.redis_url:
             try:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 self.store = RedisStore(settings.redis_url)
                 logger.info("Using Redis For Session Storage")
             except Exception as e:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Failed To Connect To Redis ({settings.redis_url}): {e}. "
@@ -139,6 +180,7 @@ class SessionManager:
                 self.store = InMemoryStore()
         else:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 "Using In-Memory Sessions - Data Will Be Lost On Restart. "
@@ -149,7 +191,6 @@ class SessionManager:
         self.sessions = _sessions
         self.session_timeout = timedelta(hours=settings.session_timeout_hours)
         self.locks = _session_locks
-        self._ensure_weaviate_schemas()
 
     def _get_lock(self, session_id: str) -> threading.Lock:
         """Get or create a lock for a specific session"""
@@ -157,46 +198,26 @@ class SessionManager:
             self.locks[session_id] = threading.Lock()
         return self.locks[session_id]
 
-    def _ensure_weaviate_schemas(self):
-        """Ensure Weaviate has required schemas"""
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
-            return
-
-        schema = weaviate_client.schema.get()
-        classes = [c["class"] for c in schema.get("classes", [])]
-
-        if "ConversationHistory" not in classes:
-            weaviate_client.schema.create_class(
-                {
-                    "class": "ConversationHistory",
-                    "properties": [
-                        {"name": "session_id", "dataType": ["text"]},
-                        {"name": "goal", "dataType": ["text"]},
-                        {"name": "messages", "dataType": ["text"]},
-                        {"name": "final_plan", "dataType": ["text"]},
-                        {"name": "created_at", "dataType": ["date"]},
-                    ],
-                }
-            )
-
-        if "UserPreferences" not in classes:
-            weaviate_client.schema.create_class(
-                {
-                    "class": "UserPreferences",
-                    "properties": [
-                        {"name": "user_id", "dataType": ["text"]},
-                        {"name": "preferences", "dataType": ["text"]},
-                        {"name": "updated_at", "dataType": ["date"]},
-                    ],
-                }
-            )
-
     def create_session(self, initial_goal: str) -> ConversationState:
         """Create a new conversation session with locking"""
         session = ConversationState(goal=initial_goal)
         lock = self._get_lock(session.session_id)
         with lock:
             self.store.save(session)
+
+        # publish session.started event (fire-and-forget)
+        try:
+            bus = get_event_bus()
+            event = Event(
+                topic=Topics.SESSION_STARTED,
+                source="session",
+                data={"goal": initial_goal},
+                session_id=session.session_id,
+            )
+            _try_publish(bus, event)
+        except Exception:
+            pass
+
         return session
 
     def get_session(self, session_id: str) -> Optional[ConversationState]:
@@ -234,7 +255,20 @@ class SessionManager:
     def complete_session(
         self, session_id: str, final_plan: Optional[List] = None
     ) -> None:
-        """Mark session as complete and persist to Weaviate with locking"""
+        """Mark session as complete and persist to SQLite"""
+        # publish session.ended event (fire-and-forget)
+        try:
+            bus = get_event_bus()
+            event = Event(
+                topic=Topics.SESSION_ENDED,
+                source="session",
+                session_id=session_id,
+                data={"final_plan": bool(final_plan)},
+            )
+            _try_publish(bus, event)
+        except Exception:
+            pass
+
         lock = self._get_lock(session_id)
         with lock:
             session = self.store.get(session_id)
@@ -243,7 +277,7 @@ class SessionManager:
 
             session.status = "completed"
 
-            if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+            if os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION"):
                 # clean up in-memory only
                 self.store.delete(session_id)
                 # clean up lock after session is deleted
@@ -259,17 +293,12 @@ class SessionManager:
                 messages_data.append(d)
 
             history_data = {
-                "session_id": session.session_id,
                 "goal": session.goal,
-                "messages": json.dumps(messages_data),
-                "final_plan": json.dumps(final_plan) if final_plan is not None else None,
-                "created_at": session.created_at.isoformat(),
+                "messages": messages_data,
+                "final_plan": final_plan,
             }
 
-            weaviate_client.data_object.create(
-                data_object=history_data,
-                class_name="ConversationHistory",
-            )
+            _run_async(memory.store_conversation(session.session_id, history_data))
 
             # clean up session store
             self.store.delete(session_id)
@@ -279,100 +308,64 @@ class SessionManager:
             del self.locks[session_id]
 
     def get_relevant_history(self, query: str, limit: int = 3) -> List[Dict]:
-        """Retrieve relevant past conversations using vector search"""
+        """Retrieve relevant past conversations using full-text search"""
         import logging
+
         logger = logging.getLogger(__name__)
 
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+        if os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return []
         try:
-            result = (
-                weaviate_client.query.get(
-                    "ConversationHistory", ["goal", "messages", "final_plan"]
-                )
-                .with_near_text({"concepts": [query]})
-                .with_limit(limit)
-                .do()
-            )
-            entries = (
-                result.get("data", {}).get("Get", {}).get("ConversationHistory", [])
-            )
-            out = []
-            for h in entries:
-                out.append(
-                    {
-                        "goal": h["goal"],
-                        "messages": json.loads(h["messages"])
-                        if h.get("messages")
-                        else [],
-                        "plan": json.loads(h["final_plan"])
-                        if h.get("final_plan")
-                        else None,
-                    }
-                )
-            return out
+            return _run_async(memory.get_conversation_history(query, limit=limit))
         except Exception as e:
-            logger.warning(f"Failed To Retrieve History From Weaviate: {e}")
+            logger.warning(f"Failed to retrieve history: {e}")
             return []
 
     def get_user_preferences(self, user_id: str = "default") -> UserPreferences:
-        """Get user preferences from cache or Weaviate"""
+        """Get user preferences from cache or SQLite"""
         import logging
+
         logger = logging.getLogger(__name__)
         global _preferences_cache
 
         if _preferences_cache and _preferences_cache.user_id == user_id:
             return _preferences_cache
 
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+        if os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION"):
             _preferences_cache = UserPreferences(user_id=user_id)
             return _preferences_cache
 
         try:
-            result = (
-                weaviate_client.query.get("UserPreferences", ["user_id", "preferences"])
-                .with_where(
-                    {
-                        "path": ["user_id"],
-                        "operator": "Equal",
-                        "valueText": user_id,
-                    }
-                )
-                .do()
-            )
-            prefs_list = (
-                result.get("data", {}).get("Get", {}).get("UserPreferences", [])
-            )
-            if prefs_list:
-                data = json.loads(prefs_list[0]["preferences"])
-                _preferences_cache = UserPreferences(**data)
+            prefs_data = _run_async(memory.get_preferences(user_id))
+            if prefs_data:
+                _preferences_cache = UserPreferences(**prefs_data)
                 return _preferences_cache
         except Exception as e:
-            logger.warning(f"Failed To Load Preferences From Weaviate: {e}")
+            logger.warning(f"Failed to load preferences: {e}")
 
         _preferences_cache = UserPreferences(user_id=user_id)
         return _preferences_cache
 
-    def save_user_preferences(self, preferences: UserPreferences):
-        """Save user preferences to Weaviate and cache in memory"""
+    def save_user_preferences(self, preferences: UserPreferences) -> None:
+        """Save user preferences to SQLite and cache in memory"""
         import logging
+
         logger = logging.getLogger(__name__)
         global _preferences_cache
         _preferences_cache = preferences
 
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+        if os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return
 
-        pref_data = preferences.model_dump()
-        pref_data["updated_at"] = preferences.updated_at.isoformat()
-
         try:
-            weaviate_client.data_object.create(
-                data_object=pref_data,
-                class_name="UserPreferences",
-            )
+            pref_data = preferences.model_dump()
+            # convert datetime fields to strings for json
+            for key in ("created_at", "updated_at"):
+                if key in pref_data and hasattr(pref_data[key], "isoformat"):
+                    pref_data[key] = pref_data[key].isoformat()
+            _run_async(memory.store_preferences(preferences.user_id, pref_data))
         except Exception as e:
-            logger.warning(f"Failed To Save Preferences To Weaviate: {e}")
+            logger.warning(f"Failed to save preferences: {e}")
 
 
 session_manager = SessionManager()

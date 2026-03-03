@@ -1,24 +1,23 @@
-import pytest
-from fastapi.testclient import TestClient
-from unittest.mock import patch, MagicMock, AsyncMock
-import json
 import sys
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# mock session manager before importing app
-with patch("packages.core.session.weaviate_client"):
-    from apps.server.main import app
-    from packages.core.models import (
-        ConversationState,
-        Sprint,
-        Task,
-        Priority,
-        MessageRole,
-    )
-    from packages.core.session import _sessions
+import pytest  # noqa: E402
+from unittest.mock import patch, MagicMock, AsyncMock  # noqa: E402
+
+fastapi = pytest.importorskip("fastapi", reason="fastapi not installed (requires .[server])")
+from fastapi.testclient import TestClient  # noqa: E402
+
+from apps.server.main import app  # noqa: E402
+from packages.core.models import (  # noqa: E402
+    ConversationState,
+    Sprint,
+    Task,
+    Priority,
+    MessageRole,
+)
 
 
 @pytest.fixture
@@ -64,7 +63,7 @@ def sample_plan():
 
 
 class TestConversationAPI:
-    @patch("apps.server.main.INTERACTIVE_PIPELINE.ainvoke", new_callable=AsyncMock)
+    @patch("apps.server.main.run_interactive_pipeline", new_callable=AsyncMock)
     def test_start_conversation_with_questions(
         self, mock_pipeline, client, mock_session_manager, sample_conversation_state
     ):
@@ -92,7 +91,7 @@ class TestConversationAPI:
         assert len(data["questions"]) == 2
         assert "What platform?" in data["questions"]
 
-    @patch("apps.server.main.INTERACTIVE_PIPELINE.ainvoke", new_callable=AsyncMock)
+    @patch("apps.server.main.run_interactive_pipeline", new_callable=AsyncMock)
     def test_start_conversation_direct_to_plan(
         self,
         mock_pipeline,

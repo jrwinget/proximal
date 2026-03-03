@@ -4,11 +4,12 @@ import json
 from datetime import date
 from pydantic import BaseModel
 
-from ..models import Task, Sprint, Priority, MessageRole, ClarificationRequest
-from ..memory import client as mem
+from ..models import Task, Sprint
+from .. import memory
 from ..providers.router import chat as chat_model
 from ..session import session_manager
 from .registry import register_agent
+from .base import BaseAgent
 
 
 class DateEncoder(json.JSONEncoder):
@@ -30,14 +31,27 @@ def _json(obj) -> str:
 
 
 @register_agent("planner")
-class PlannerAgent:
+class PlannerAgent(BaseAgent):
     """Orchestrator that clarifies, plans, prioritizes, estimates, and packages tasks into sprints."""
+
+    name = "planner"
 
     def __init__(self) -> None:
         pass
 
     def __repr__(self) -> str:
         return "PlannerAgent()"
+
+    async def run(self, context) -> any:
+        """Run the planner pipeline within a shared context."""
+        goal = context.goal
+        result = await self.plan_llm({"goal": goal})
+        tasks = result.get("tasks", [])
+        context.tasks = [t.model_dump() for t in tasks]
+        return context.tasks
+
+    def can_contribute(self, context) -> bool:
+        return True
 
     async def clarify_llm(self, state: dict) -> dict:
         """Check if clarification is needed and generate questions"""
@@ -172,10 +186,8 @@ class PlannerAgent:
         tasks_data = json.loads(content)
         tasks = [Task.model_validate(task) for task in tasks_data]
 
-        # persist initial plan in vector store
-        mem.batch.add_data_object(
-            {"role": "planner", "content": _json(tasks)}, "Memory"
-        )
+        # persist initial plan in memory store
+        await memory.store("planner", _json(tasks))
 
         return {"tasks": tasks}
 
@@ -242,9 +254,7 @@ class PlannerAgent:
         sprints = [Sprint.model_validate(sprint) for sprint in sprints_data]
 
         # persist final sprint plan
-        mem.batch.add_data_object(
-            {"role": "packager", "content": _json(sprints)}, "Memory"
-        )
+        await memory.store("packager", _json(sprints))
 
         # if in a session, complete it
         session_id = state.get("session_id")
@@ -297,29 +307,39 @@ class PlannerAgent:
 # Standalone function wrappers for backward compatibility
 _planner_instance = None
 
+
 def _get_planner():
     global _planner_instance
     if _planner_instance is None:
         _planner_instance = PlannerAgent()
     return _planner_instance
 
+
 async def clarify_llm(state: dict) -> dict:
     return await _get_planner().clarify_llm(state)
+
 
 async def integrate_clarifications_llm(state: dict) -> dict:
     return await _get_planner().integrate_clarifications_llm(state)
 
+
 async def plan_llm(state: dict) -> dict:
     return await _get_planner().plan_llm(state)
+
 
 async def prioritize_llm(state: dict) -> dict:
     return await _get_planner().prioritize_llm(state)
 
+
 async def estimate_llm(state: dict) -> dict:
     return await _get_planner().estimate_llm(state)
+
 
 async def package_llm(state: dict) -> dict:
     return await _get_planner().package_llm(state)
 
-async def breakdown_task_llm(task: Task, breakdown_type: str = "subtasks") -> List[Dict]:
+
+async def breakdown_task_llm(
+    task: Task, breakdown_type: str = "subtasks"
+) -> List[Dict]:
     return await _get_planner().breakdown_task_llm(task, breakdown_type)

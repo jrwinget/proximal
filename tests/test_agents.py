@@ -1,6 +1,3 @@
-import pytest
-from unittest.mock import MagicMock
-
 from packages.core.agents.guardian import GuardianAgent
 from packages.core.agents.mentor import MentorAgent
 from packages.core.agents.scribe import ScribeAgent
@@ -23,19 +20,19 @@ def test_mentor_motivates():
 
 
 def test_scribe_records(monkeypatch):
+    from unittest.mock import AsyncMock
+
     agent = ScribeAgent()
-    mock_batch = MagicMock()
-    monkeypatch.setattr(
-        "packages.core.agents.scribe.mem", MagicMock(batch=mock_batch)
-    )
+    mock_store = AsyncMock()
+    monkeypatch.setattr("packages.core.agents.scribe.memory.store", mock_store)
     plan = [{"title": "Task"}]
     agent.record_plan(plan)
-    assert mock_batch.add_data_object.called
+    assert mock_store.called
 
 
 def test_liaison_message():
     agent = LiaisonAgent()
-    msg = agent.draft_message("Goal")
+    msg = agent.draft_message_sync("Goal")
     assert "Goal" in msg
 
 

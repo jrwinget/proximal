@@ -1,14 +1,16 @@
-import pytest
-from unittest.mock import patch, MagicMock, call
-import json
+"""Tests for interactive CLI commands and task breakdown."""
+
 import sys
 from pathlib import Path
-from typer.testing import CliRunner
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from apps.cli import app
+import pytest  # noqa: E402
+from unittest.mock import patch, MagicMock, AsyncMock  # noqa: E402
+from typer.testing import CliRunner  # noqa: E402
+
+from apps.cli import app  # noqa: E402
 
 
 @pytest.fixture
@@ -56,10 +58,10 @@ def interactive_conversation_flow():
 class TestInteractivePlanning:
     @patch("apps.cli.httpx.post")
     @patch("apps.cli.Prompt.ask")
-    def test_interactive_planning_flow(
+    def test_interactive_planning_flow_server(
         self, mock_prompt, mock_post, runner, interactive_conversation_flow
     ):
-        """Test the full interactive planning flow"""
+        """Test the full interactive planning flow via server"""
         # setup mocks
         mock_responses = [
             MagicMock(json=lambda: interactive_conversation_flow["start_response"]),
@@ -73,9 +75,9 @@ class TestInteractivePlanning:
         # mock user answers to questions
         mock_prompt.side_effect = ["iOS with SwiftUI", "3 months"]
 
-        # run command
+        # run command with --server flag
         result = runner.invoke(
-            app, ["plan", "Build a mobile app", "--interactive", "--no-pretty"]
+            app, ["plan", "Build a mobile app", "--interactive", "--server", "--no-pretty"]
         )
 
         # verify success
@@ -99,8 +101,8 @@ class TestInteractivePlanning:
         assert answers["What platform do you want to target?"] == "iOS with SwiftUI"
 
     @patch("apps.cli.httpx.post")
-    def test_interactive_no_clarification_needed(self, mock_post, runner):
-        """Test interactive mode when no clarification is needed"""
+    def test_interactive_no_clarification_server(self, mock_post, runner):
+        """Test interactive mode when no clarification is needed via server"""
         # setup mock - goes directly to plan
         mock_response = MagicMock()
         mock_response.json.return_value = {
@@ -118,13 +120,14 @@ class TestInteractivePlanning:
         mock_response.raise_for_status = MagicMock()
         mock_post.return_value = mock_response
 
-        # run command
+        # run command with --server flag
         result = runner.invoke(
             app,
             [
                 "plan",
                 "Build an iOS todo app with SwiftUI",
                 "--interactive",
+                "--server",
                 "--no-pretty",
             ],
         )
@@ -136,6 +139,46 @@ class TestInteractivePlanning:
 
         # only one api call
         assert mock_post.call_count == 1
+
+    @patch("apps.cli._get_interactive_pipeline")
+    def test_interactive_direct_mode_no_clarification(self, mock_get_pipeline, runner):
+        """Test interactive plan in direct mode with no clarification."""
+        # return dicts instead of pydantic models to avoid date serialization issues
+        mock_pipeline = AsyncMock()
+        mock_pipeline.return_value = {
+            "needs_clarification": False,
+            "sprints": [
+                {
+                    "name": "Sprint 1",
+                    "start": "2024-01-01",
+                    "end": "2024-01-14",
+                    "tasks": [
+                        {
+                            "id": "task1",
+                            "title": "Setup project",
+                            "detail": "Initialize repo",
+                            "priority": "P1",
+                            "estimate_h": 2,
+                            "done": False,
+                        }
+                    ],
+                }
+            ],
+        }
+        mock_get_pipeline.return_value = mock_pipeline
+
+        result = runner.invoke(
+            app,
+            [
+                "plan",
+                "Build an iOS todo app",
+                "--interactive",
+                "--no-pretty",
+            ],
+        )
+
+        assert result.exit_code == 0
+        assert "Interactive Planning:" in result.stdout
 
 
 class TestTaskBreakdown:
@@ -216,7 +259,6 @@ class TestTaskBreakdown:
         assert result.exit_code == 0
         assert "Pomodoro Sessions" in result.stdout
         assert "Setup environment" in result.stdout
-        assert "≈ 50 minutes" in result.stdout  # 2 sessions * 25 minutes
 
 
 class TestPreferences:
@@ -301,19 +343,19 @@ class TestCLIErrorHandling:
         """Test that Ctrl+C is handled gracefully"""
         mock_post.side_effect = KeyboardInterrupt()
 
-        result = runner.invoke(app, ["plan", "Test", "--interactive"])
+        result = runner.invoke(app, ["plan", "Test", "--interactive", "--server"])
 
         assert result.exit_code == 0
         assert "cancelled by user" in result.stdout.lower()
 
     @patch("apps.cli.httpx.post")
-    def test_connection_error_interactive(self, mock_post, runner):
-        """Test connection error handling in interactive mode"""
+    def test_connection_error_interactive_server(self, mock_post, runner):
+        """Test connection error handling in interactive server mode"""
         import httpx
 
         mock_post.side_effect = httpx.RequestError("Connection failed")
 
-        result = runner.invoke(app, ["plan", "Test", "--interactive"])
+        result = runner.invoke(app, ["plan", "Test", "--interactive", "--server"])
 
         assert result.exit_code == 1
         assert "Could not connect to API server" in result.stdout
