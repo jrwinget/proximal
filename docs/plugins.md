@@ -5,44 +5,23 @@ Proximal supports extension through two mechanisms: the **capability system**
 
 ## Capability Registration (Recommended)
 
-Capabilities are the primary extension point in proximal v0.2. A capability is
-a callable that an agent can discover and invoke at runtime.
+Capabilities are the primary extension point. A capability is a registered
+callable that agents can discover and invoke at runtime.
 
 ### Registering a Custom Capability
 
-Create a module with your capability function and register it so the agent
-layer can find it:
-
 ```python
-from packages.core.agents.registry import register_agent
+from packages.core.capabilities.registry import register_capability
 
-# example: a custom "research" capability that agents can delegate to
+@register_capability(
+    name="research_topic",
+    description="Look up background information on a topic",
+    category="research",
+)
 async def research_topic(topic: str, depth: str = "summary") -> dict:
-    """Look up background information on a topic.
-
-    Parameters
-    ----------
-    topic : str
-        Subject to research.
-    depth : str
-        One of "summary", "detailed", or "deep-dive".
-
-    Returns
-    -------
-    dict
-        Research findings with keys ``summary`` and ``sources``.
-    """
-    # your implementation here — call an API, search a database, etc.
+    """Look up background information on a topic."""
+    # your implementation here
     return {"summary": "...", "sources": []}
-```
-
-Then wire it into an existing agent or create a thin wrapper agent:
-
-```python
-@register_agent("researcher")
-class ResearcherAgent:
-    async def research(self, topic: str) -> dict:
-        return await research_topic(topic)
 ```
 
 ### Using Entry Points
@@ -58,25 +37,30 @@ researcher = "my_pkg.researcher"
 Proximal loads all `proximal.plugins` entry points on startup, so your
 capability is available without any code changes in the core project.
 
-## Agent Registration (Advanced / Legacy)
+## Agent Registration (Advanced)
 
-For cases where you need a fully custom agent class (e.g. with its own state
-or lifecycle), you can register an agent directly:
+For a fully custom agent, extend `BaseAgent` and register it. Your agent
+participates in the phased orchestration pipeline via `run(context)` and
+optionally gates itself with `can_contribute(context)`:
 
 ```python
+from packages.core.agents.base import BaseAgent
 from packages.core.agents.registry import register_agent
 
-@register_agent("myprov")
-class MyCustomAgent:
-    """A fully custom agent with its own lifecycle."""
+@register_agent("researcher")
+class ResearcherAgent(BaseAgent):
+    """A custom agent that performs research."""
 
-    def __init__(self) -> None:
-        # custom initialization
-        pass
+    name = "researcher"
 
-    async def run(self, goal: str) -> dict:
-        # your agent logic
-        return {"result": "..."}
+    async def run(self, context):
+        goal = context.goal
+        # your agent logic using SharedContext signals, tasks, etc.
+        return {"findings": "..."}
+
+    def can_contribute(self, context) -> bool:
+        # optionally gate: only contribute when a specific signal is set
+        return context.get_signal("needs_research", False)
 ```
 
 ## Provider Plugins
@@ -102,6 +86,6 @@ myprov = "my_pkg.provider"
 
 On import, Proximal will load entry points and register the classes.
 
-> **Note**: With litellm backing the provider layer in v0.2, you may not need a
-> custom provider at all -- litellm already supports 100+ LLM backends. Use a
-> custom provider only when litellm does not cover your use case.
+> **Note**: With litellm backing the provider layer, you may not need a custom
+> provider at all -- litellm already supports 100+ LLM backends. Use a custom
+> provider only when litellm does not cover your use case.

@@ -119,53 +119,56 @@ Example test structure:
 
 ```python
 @pytest.mark.asyncio
-@patch("packages.core.agents.chat_model", new_callable=AsyncMock)
-async def test_agent_transforms_vague_input_into_structured_plan(mock_chat):
-    """Test that vague project descriptions produce structured outputs."""
-    # setup mock
-    mock_chat.return_value = '[{"id": "task1", "title": "Task 1", "detail": "Detail 1", "priority": "P1", "estimate_h": 5, "done": false}]'
+async def test_guardian_sets_overwhelm_signal(self):
+    """Guardian should detect overwhelm when tasks exceed threshold."""
+    agent = GuardianAgent()
+    profile = UserProfile(overwhelm_threshold=3)
+    tasks = [{"title": f"Task {i}"} for i in range(4)]
+    ctx = SharedContext(tasks=tasks, user_profile=profile, goal="test")
 
-    # call the function
-    result = await plan_llm({"goal": "build a website"})
+    await agent.run(ctx)
 
-    # verify the result
-    assert "tasks" in result
-    assert len(result["tasks"]) > 0
-    assert all(task.priority in ["P0", "P1", "P2", "P3"] for task in result["tasks"])
+    assert ctx.get_signal("overwhelm_detected") is True
 ```
+
+LLM calls are mocked globally via `conftest.py` (`litellm.acompletion`). See
+`tests/conftest.py` for the session-wide fixtures.
 
 ## Project Structure
 
 ```
 proximal/
-├── apps/                # Application entry points
-│   ├── server/          # FastAPI server (requires `.[server]`)
-│   │   ├── main.py      # API endpoints
-│   │   └── pipeline.py  # Request pipeline
-│   ├── cli.py           # Command-line interface
-│   └── mcp_server.py    # MCP server (requires `.[mcp]`)
-├── packages/            # Core packages
-│   └── core/            # Core functionality
-│       ├── agents/      # Agent implementations
-│       │   ├── registry.py
-│       │   ├── planner.py
-│       │   ├── chronos.py
-│       │   ├── guardian.py
-│       │   ├── mentor.py
-│       │   ├── liaison.py
-│       │   ├── scribe.py
-│       │   └── focusbuddy.py
-│       ├── providers/   # LLM providers (litellm-backed)
-│       ├── integrations/ # External integrations
-│       ├── models.py    # Pydantic data models
-│       ├── memory.py    # Storage layer (aiosqlite)
-│       ├── session.py   # Session management
-│       ├── settings.py  # Configuration via pydantic-settings
-│       ├── orchestrator.py  # Multi-agent orchestrator
-│       ├── observability.py # Logging and tracing
-│       └── fault_tolerance.py # Retry and timeout utilities
-├── tests/               # Test suite
-└── docs/                # Documentation
+├── apps/                    # Application entry points
+│   ├── server/              # FastAPI server (requires .[server])
+│   ├── cli.py               # CLI (plan, assist, wellness, workflow, analytics)
+│   └── mcp_server.py        # MCP server (requires .[mcp])
+├── packages/core/           # Core functionality
+│   ├── agents/              # 7 agents + BaseAgent ABC + registry
+│   │   ├── base.py          # BaseAgent with run(context) / can_contribute(context)
+│   │   ├── planner.py       # Goal → tasks pipeline
+│   │   ├── chronos.py       # Scheduling + estimate learning (reactive)
+│   │   ├── guardian.py      # Wellness monitoring (reactive)
+│   │   ├── mentor.py        # Motivational coaching
+│   │   ├── liaison.py       # Message drafting
+│   │   ├── scribe.py        # Persistence
+│   │   └── focusbuddy.py    # Focus sessions
+│   ├── analytics/           # Task completion, focus, burnout tracking
+│   ├── capabilities/        # Registered capabilities (productivity, wellness, voice, etc.)
+│   ├── collaboration/       # SharedContext + CollaborationMessage
+│   ├── integrations/        # Calendar, email, Automatisch
+│   ├── notifications/       # Slack, Discord, email notifiers
+│   ├── providers/           # LLM providers (litellm-backed)
+│   ├── workflows/           # Autonomous workflow definitions + scheduler
+│   ├── events.py            # Event bus (pub/sub with wildcard matching)
+│   ├── models.py            # Pydantic data models
+│   ├── memory.py            # Storage layer (aiosqlite + FTS5)
+│   ├── orchestrator.py      # V1 scatter-gather + V2 phased orchestrator
+│   ├── startup.py           # Reactive layer wiring
+│   ├── settings.py          # Configuration via pydantic-settings
+│   ├── fault_tolerance.py   # Circuit breaker, retries, timeouts
+│   └── observability.py     # Logging and tracing
+├── tests/                   # 495 tests (see tests/README.md)
+└── docs/                    # Documentation
 ```
 
 ### Extending Proximal: The Capability System
