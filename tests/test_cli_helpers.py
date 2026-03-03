@@ -166,10 +166,10 @@ class TestPromptProfileSetup:
     def test_returns_user_profile(self, mock_ask):
         """Should return a UserProfile instance."""
         mock_ask.side_effect = [
-            "Ada",     # name
-            "2",       # focus_style -> variable
-            "2",       # transition_difficulty -> moderate
-            "warm",    # tone
+            "Ada",  # name
+            "2",  # focus_style -> variable
+            "2",  # transition_difficulty -> moderate
+            "warm",  # tone
         ]
         profile = prompt_profile_setup()
         assert isinstance(profile, UserProfile)
@@ -179,8 +179,8 @@ class TestPromptProfileSetup:
         """Should set the name from user input."""
         mock_ask.side_effect = [
             "Jordan",
-            "1",       # focus_style
-            "1",       # transition_difficulty
+            "1",  # focus_style
+            "1",  # transition_difficulty
             "direct",  # tone
         ]
         profile = prompt_profile_setup()
@@ -190,7 +190,7 @@ class TestPromptProfileSetup:
     def test_default_name_on_empty(self, mock_ask):
         """Empty name input should use the default name."""
         mock_ask.side_effect = [
-            "",        # empty name
+            "",  # empty name
             "2",
             "2",
             "warm",

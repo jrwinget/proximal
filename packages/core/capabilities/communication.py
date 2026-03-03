@@ -1,4 +1,5 @@
 """Communication capabilities — LLM-powered message drafting."""
+
 from __future__ import annotations
 
 from typing import Any

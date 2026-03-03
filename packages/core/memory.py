@@ -22,8 +22,7 @@ _initialized: bool = False
 def _should_skip() -> bool:
     """Check if database operations should be skipped (test env)."""
     return bool(
-        os.getenv("SKIP_DB_CONNECTION")
-        or os.getenv("SKIP_WEAVIATE_CONNECTION")
+        os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION")
     )
 
 
@@ -193,7 +192,11 @@ async def search(query: str, limit: int = 5) -> list[dict]:
         )
         rows = await cursor.fetchall()
         return [
-            {"role": row["role"], "content": row["content"], "created_at": row["created_at"]}
+            {
+                "role": row["role"],
+                "content": row["content"],
+                "created_at": row["created_at"],
+            }
             for row in rows
         ]
 
@@ -334,7 +337,9 @@ async def get_conversation_history(query: str, limit: int = 5) -> list[dict]:
                 {
                     "goal": row["goal"],
                     "messages": json.loads(row["messages"]) if row["messages"] else [],
-                    "plan": json.loads(row["final_plan"]) if row["final_plan"] else None,
+                    "plan": json.loads(row["final_plan"])
+                    if row["final_plan"]
+                    else None,
                 }
             )
         return results

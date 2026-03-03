@@ -7,15 +7,20 @@ from typing import Callable, Optional, TypeVar
 from dataclasses import dataclass, field
 from functools import wraps
 
-from .providers.exceptions import ProviderError, ProviderRateLimitError, AgentTimeoutError
+from .providers.exceptions import (
+    ProviderError,
+    ProviderRateLimitError,
+    AgentTimeoutError,
+)
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CircuitState(Enum):
     """Circuit breaker states."""
+
     CLOSED = "closed"  # Normal operation
     OPEN = "open"  # Failing, reject requests
     HALF_OPEN = "half_open"  # Testing if service recovered
@@ -24,6 +29,7 @@ class CircuitState(Enum):
 @dataclass
 class CircuitBreakerConfig:
     """Configuration for circuit breaker."""
+
     failure_threshold: int = 5  # Failures before opening circuit
     success_threshold: int = 2  # Successes to close circuit from half-open
     timeout: float = 60.0  # Seconds before trying half-open
@@ -33,6 +39,7 @@ class CircuitBreakerConfig:
 @dataclass
 class CircuitBreakerStats:
     """Statistics for circuit breaker."""
+
     state: CircuitState = CircuitState.CLOSED
     failure_count: int = 0
     success_count: int = 0
@@ -111,7 +118,9 @@ class CircuitBreaker:
 
             if self.stats.state == CircuitState.HALF_OPEN:
                 self._set_open()
-                logger.warning(f"Circuit breaker {self.name} reopened after failed recovery attempt")
+                logger.warning(
+                    f"Circuit breaker {self.name} reopened after failed recovery attempt"
+                )
 
             elif self.stats.failure_count >= self.config.failure_threshold:
                 self._set_open()
@@ -178,7 +187,7 @@ def with_retry(
     base_delay: float = 1.0,
     max_delay: float = 10.0,
     exponential_base: float = 2.0,
-    retry_on: tuple = (ProviderError,)
+    retry_on: tuple = (ProviderError,),
 ):
     """
     Decorator for retry logic with exponential backoff.
@@ -195,6 +204,7 @@ def with_retry(
     - Respect rate limit signals
     - Only retry retriable errors
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -224,10 +234,7 @@ def with_retry(
                         break
 
                     # Calculate exponential backoff delay
-                    delay = min(
-                        base_delay * (exponential_base ** attempt),
-                        max_delay
-                    )
+                    delay = min(base_delay * (exponential_base**attempt), max_delay)
 
                     logger.warning(
                         f"Attempt {attempt + 1}/{max_attempts} failed: {e}. "
@@ -236,7 +243,9 @@ def with_retry(
                     await asyncio.sleep(delay)
 
             # All attempts failed
-            logger.error(f"All {max_attempts} attempts failed. Last error: {last_exception}")
+            logger.error(
+                f"All {max_attempts} attempts failed. Last error: {last_exception}"
+            )
             raise last_exception
 
         @wraps(func)
@@ -256,10 +265,7 @@ def with_retry(
                     if attempt == max_attempts - 1:
                         break
 
-                    delay = min(
-                        base_delay * (exponential_base ** attempt),
-                        max_delay
-                    )
+                    delay = min(base_delay * (exponential_base**attempt), max_delay)
 
                     logger.warning(
                         f"Attempt {attempt + 1}/{max_attempts} failed: {e}. "

@@ -1,4 +1,5 @@
 """LLM chat completion via litellm."""
+
 from __future__ import annotations
 
 import logging

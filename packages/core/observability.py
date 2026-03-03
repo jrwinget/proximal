@@ -37,7 +37,7 @@ class AgentMetrics:
             "status": self.status,
             "error": self.error,
             "timestamp": datetime.fromtimestamp(self.start_time).isoformat(),
-            **self.metadata
+            **self.metadata,
         }
 
 
@@ -48,9 +48,13 @@ class ObservabilityLogger:
         self.logger = logging.getLogger(name)
         self._metrics: list[AgentMetrics] = []
 
-    def log_agent_start(self, agent_name: str, operation: str, **metadata) -> AgentMetrics:
+    def log_agent_start(
+        self, agent_name: str, operation: str, **metadata
+    ) -> AgentMetrics:
         """Log start of agent operation."""
-        metrics = AgentMetrics(agent_name=agent_name, operation=operation, metadata=metadata)
+        metrics = AgentMetrics(
+            agent_name=agent_name, operation=operation, metadata=metadata
+        )
         self._metrics.append(metrics)
 
         self.logger.info(
@@ -59,8 +63,8 @@ class ObservabilityLogger:
                 "agent_name": agent_name,
                 "operation": operation,
                 "event": "agent_start",
-                **metadata
-            }
+                **metadata,
+            },
         )
         return metrics
 
@@ -69,7 +73,7 @@ class ObservabilityLogger:
         metrics: AgentMetrics,
         status: str = "success",
         error: Optional[str] = None,
-        **additional_metadata
+        **additional_metadata,
     ):
         """Log completion of agent operation."""
         metrics.complete(status=status, error=error)
@@ -78,13 +82,12 @@ class ObservabilityLogger:
         log_func = self.logger.info if status == "success" else self.logger.error
         log_func(
             f"Agent operation completed: {metrics.agent_name}.{metrics.operation} ({metrics.duration_ms:.2f}ms)",
-            extra={
-                "event": "agent_complete",
-                **metrics.to_dict()
-            }
+            extra={"event": "agent_complete", **metrics.to_dict()},
         )
 
-    def log_agent_handoff(self, from_agent: str, to_agent: str, context: Dict[str, Any]):
+    def log_agent_handoff(
+        self, from_agent: str, to_agent: str, context: Dict[str, Any]
+    ):
         """Log agent handoff for tracing multi-agent workflows."""
         self.logger.info(
             f"Agent handoff: {from_agent} -> {to_agent}",
@@ -93,8 +96,8 @@ class ObservabilityLogger:
                 "from_agent": from_agent,
                 "to_agent": to_agent,
                 "context_keys": list(context.keys()),
-                "timestamp": datetime.now().isoformat()
-            }
+                "timestamp": datetime.now().isoformat(),
+            },
         )
 
     def log_llm_call(
@@ -104,7 +107,7 @@ class ObservabilityLogger:
         prompt_tokens: Optional[int] = None,
         completion_tokens: Optional[int] = None,
         duration_ms: Optional[float] = None,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ):
         """Log LLM API call with token usage."""
         self.logger.info(
@@ -118,8 +121,8 @@ class ObservabilityLogger:
                 "total_tokens": (prompt_tokens or 0) + (completion_tokens or 0),
                 "duration_ms": duration_ms,
                 "error": error,
-                "timestamp": datetime.now().isoformat()
-            }
+                "timestamp": datetime.now().isoformat(),
+            },
         )
 
     def get_metrics_summary(self) -> Dict[str, Any]:
@@ -132,10 +135,15 @@ class ObservabilityLogger:
         return {
             "total_operations": len(self._metrics),
             "completed_operations": len(completed),
-            "successful_operations": len([m for m in completed if m.status == "success"]),
+            "successful_operations": len(
+                [m for m in completed if m.status == "success"]
+            ),
             "failed_operations": len([m for m in completed if m.status == "error"]),
-            "average_duration_ms": sum(m.duration_ms for m in completed) / len(completed) if completed else 0,
-            "agent_breakdown": self._get_agent_breakdown()
+            "average_duration_ms": sum(m.duration_ms for m in completed)
+            / len(completed)
+            if completed
+            else 0,
+            "agent_breakdown": self._get_agent_breakdown(),
         }
 
     def _get_agent_breakdown(self) -> Dict[str, Dict[str, Any]]:
@@ -147,7 +155,7 @@ class ObservabilityLogger:
                     "total_calls": 0,
                     "successful_calls": 0,
                     "failed_calls": 0,
-                    "total_duration_ms": 0
+                    "total_duration_ms": 0,
                 }
 
             breakdown[metrics.agent_name]["total_calls"] += 1
@@ -156,7 +164,9 @@ class ObservabilityLogger:
             elif metrics.status == "error":
                 breakdown[metrics.agent_name]["failed_calls"] += 1
             if metrics.duration_ms:
-                breakdown[metrics.agent_name]["total_duration_ms"] += metrics.duration_ms
+                breakdown[metrics.agent_name]["total_duration_ms"] += (
+                    metrics.duration_ms
+                )
 
         return breakdown
 
@@ -182,6 +192,7 @@ def trace_agent_operation(agent_name: str, operation: str):
         async def plan_llm(state: dict) -> dict:
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):
@@ -211,6 +222,7 @@ def trace_agent_operation(agent_name: str, operation: str):
 
         # Return appropriate wrapper based on function type
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper

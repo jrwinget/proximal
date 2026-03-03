@@ -1,4 +1,5 @@
 """Productivity capabilities — deterministic scheduling and focus tools."""
+
 from __future__ import annotations
 
 import os

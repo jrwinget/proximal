@@ -1,4 +1,5 @@
 """Wellness capabilities — deterministic well-being and motivation tools."""
+
 from __future__ import annotations
 
 from typing import Any

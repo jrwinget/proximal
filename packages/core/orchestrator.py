@@ -40,11 +40,7 @@ class Orchestrator:
         return cls()
 
     async def _call_agent_with_fault_tolerance(
-        self,
-        agent_name: str,
-        agent: Any,
-        method: str,
-        *args: Any
+        self, agent_name: str, agent: Any, method: str, *args: Any
     ) -> Any:
         """
         Call agent method with fault tolerance and observability.
@@ -57,7 +53,9 @@ class Orchestrator:
         operation_name = f"{agent_name}.{method}"
 
         try:
-            with trace_operation("orchestrator", "agent_call", agent=agent_name, method=method):
+            with trace_operation(
+                "orchestrator", "agent_call", agent=agent_name, method=method
+            ):
                 fn = getattr(agent, method)
 
                 # Execute with timeout
@@ -65,13 +63,13 @@ class Orchestrator:
                     result = await with_timeout(
                         fn(*args),
                         timeout_seconds=self.agent_timeout,
-                        operation_name=operation_name
+                        operation_name=operation_name,
                     )
                 else:
                     result = await with_timeout(
                         asyncio.to_thread(fn, *args),
                         timeout_seconds=self.agent_timeout,
-                        operation_name=operation_name
+                        operation_name=operation_name,
                     )
 
                 logger.info(f"Agent {agent_name} completed successfully")
@@ -106,7 +104,7 @@ class Orchestrator:
                 tasks_result = await with_timeout(
                     plan_llm({"goal": goal}),
                     timeout_seconds=self.agent_timeout,
-                    operation_name="planner.plan_llm"
+                    operation_name="planner.plan_llm",
                 )
                 tasks = [t.model_dump() for t in tasks_result.get("tasks", [])]
                 logger.info(f"Planner generated {len(tasks)} tasks")
@@ -133,8 +131,12 @@ class Orchestrator:
             for name, (method, arg) in agents.items():
                 try:
                     inst = self._get_agent(name)
-                    self.obs_logger.log_agent_handoff("orchestrator", name, {"method": method})
-                    coros.append(self._call_agent_with_fault_tolerance(name, inst, method, arg))
+                    self.obs_logger.log_agent_handoff(
+                        "orchestrator", name, {"method": method}
+                    )
+                    coros.append(
+                        self._call_agent_with_fault_tolerance(name, inst, method, arg)
+                    )
                     agent_names.append(name)
                 except ValueError as e:
                     logger.warning(f"Agent {name} not available: {e}")
@@ -173,7 +175,7 @@ class Orchestrator:
                 "total_agents": len(agent_names),
                 "successful_agents": successful_agents,
                 "failed_agents": failed_agents,
-                "goal": goal
+                "goal": goal,
             }
 
             return results
@@ -210,7 +212,9 @@ class Orchestrator:
                 )
                 tasks = [t.model_dump() for t in tasks_result.get("tasks", [])]
             except Exception as exc:
-                raise AgentError(f"Plan capability failed: {exc}", agent_name="planner") from exc
+                raise AgentError(
+                    f"Plan capability failed: {exc}", agent_name="planner"
+                ) from exc
 
             # run deterministic capabilities in parallel
             deterministic = {
@@ -230,17 +234,21 @@ class Orchestrator:
                     continue
                 cap_names.append(name)
                 if asyncio.iscoroutinefunction(cap.fn):
-                    coros.append(with_timeout(
-                        cap.fn(arg),
-                        timeout_seconds=self.agent_timeout,
-                        operation_name=f"capability.{name}",
-                    ))
+                    coros.append(
+                        with_timeout(
+                            cap.fn(arg),
+                            timeout_seconds=self.agent_timeout,
+                            operation_name=f"capability.{name}",
+                        )
+                    )
                 else:
-                    coros.append(with_timeout(
-                        asyncio.to_thread(cap.fn, arg),
-                        timeout_seconds=self.agent_timeout,
-                        operation_name=f"capability.{name}",
-                    ))
+                    coros.append(
+                        with_timeout(
+                            asyncio.to_thread(cap.fn, arg),
+                            timeout_seconds=self.agent_timeout,
+                            operation_name=f"capability.{name}",
+                        )
+                    )
 
             outputs = await asyncio.gather(*coros, return_exceptions=True)
 

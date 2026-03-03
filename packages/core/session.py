@@ -66,6 +66,7 @@ class RedisStore(SessionStore):
     def get(self, session_id: str) -> Optional[ConversationState]:
         """retrieve session from redis and deserialize from json"""
         import logging
+
         logger = logging.getLogger(__name__)
 
         data = self.client.get(session_id)
@@ -74,7 +75,7 @@ class RedisStore(SessionStore):
 
         try:
             # decode bytes to string, then parse json
-            json_str = data.decode('utf-8')
+            json_str = data.decode("utf-8")
             session_dict = json.loads(json_str)
             # use pydantic to reconstruct the model with validation
             return ConversationState.model_validate(session_dict)
@@ -87,7 +88,7 @@ class RedisStore(SessionStore):
     def save(self, session: ConversationState) -> None:
         """serialize session to json and store in redis"""
         # convert pydantic model to dict, handling datetime serialization
-        session_dict = session.model_dump(mode='json')
+        session_dict = session.model_dump(mode="json")
         # serialize to json string
         json_str = json.dumps(session_dict)
         # store in redis with optional expiry (24 hours)
@@ -105,9 +106,11 @@ class RedisStore(SessionStore):
             raw = self.client.get(key)
             if raw:
                 try:
-                    json_str = raw.decode('utf-8')
+                    json_str = raw.decode("utf-8")
                     session_dict = json.loads(json_str)
-                    result[key.decode()] = ConversationState.model_validate(session_dict)
+                    result[key.decode()] = ConversationState.model_validate(
+                        session_dict
+                    )
                 except (json.JSONDecodeError, ValueError):
                     # skip corrupted entries
                     continue
@@ -125,6 +128,7 @@ def _run_async(coro):
         # we're inside an async context; create a task but can't await here
         # use a new event loop in a thread
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(asyncio.run, coro).result()
     else:
@@ -136,6 +140,7 @@ class SessionManager:
 
     def __init__(self, store: SessionStore = None):
         from .settings import get_settings
+
         settings = get_settings()
 
         # use redis if configured, otherwise fall back to in-memory with warning
@@ -144,11 +149,13 @@ class SessionManager:
         elif settings.redis_url:
             try:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 self.store = RedisStore(settings.redis_url)
                 logger.info("Using Redis For Session Storage")
             except Exception as e:
                 import logging
+
                 logger = logging.getLogger(__name__)
                 logger.warning(
                     f"Failed To Connect To Redis ({settings.redis_url}): {e}. "
@@ -157,6 +164,7 @@ class SessionManager:
                 self.store = InMemoryStore()
         else:
             import logging
+
             logger = logging.getLogger(__name__)
             logger.warning(
                 "Using In-Memory Sessions - Data Will Be Lost On Restart. "
@@ -259,6 +267,7 @@ class SessionManager:
     def get_relevant_history(self, query: str, limit: int = 3) -> List[Dict]:
         """Retrieve relevant past conversations using full-text search"""
         import logging
+
         logger = logging.getLogger(__name__)
 
         if os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION"):
@@ -272,6 +281,7 @@ class SessionManager:
     def get_user_preferences(self, user_id: str = "default") -> UserPreferences:
         """Get user preferences from cache or SQLite"""
         import logging
+
         logger = logging.getLogger(__name__)
         global _preferences_cache
 
@@ -296,6 +306,7 @@ class SessionManager:
     def save_user_preferences(self, preferences: UserPreferences) -> None:
         """Save user preferences to SQLite and cache in memory"""
         import logging
+
         logger = logging.getLogger(__name__)
         global _preferences_cache
         _preferences_cache = preferences

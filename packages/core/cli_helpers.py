@@ -85,8 +85,7 @@ def display_plan_detailed(plan_data: list[dict[str, Any]]) -> str:
         lines.append(f"Sprint: {name}")
         lines.append(f"  Period: {start} to {end}")
         lines.append(
-            f"  {'ID':<10} {'Task':<30} {'Priority':<10} "
-            f"{'Hours':>6} {'Status':>8}"
+            f"  {'ID':<10} {'Task':<30} {'Priority':<10} {'Hours':>6} {'Status':>8}"
         )
         lines.append(f"  {'-' * 70}")
 
@@ -96,10 +95,7 @@ def display_plan_detailed(plan_data: list[dict[str, Any]]) -> str:
             priority = task.get("priority", "?")
             hours = task.get("estimate_h", 0)
             done = "Done" if task.get("done") else "Todo"
-            lines.append(
-                f"  {tid:<10} {title:<30} {priority:<10} "
-                f"{hours:>6} {done:>8}"
-            )
+            lines.append(f"  {tid:<10} {title:<30} {priority:<10} {hours:>6} {done:>8}")
             total_tasks += 1
             total_hours += hours
 

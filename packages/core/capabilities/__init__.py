@@ -1,4 +1,5 @@
 """Capability registry — typed functions that can be tools, agent interfaces, or standalone."""
+
 from .registry import Capability, CAPABILITY_REGISTRY, register_capability
 
 # import capability modules to trigger registration

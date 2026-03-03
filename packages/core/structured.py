@@ -1,4 +1,5 @@
 """Structured LLM output via tool_use / function calling."""
+
 from __future__ import annotations
 
 import json
@@ -104,4 +105,6 @@ async def structured_output(
     try:
         return response_model.model_validate(data)
     except ValidationError as exc:
-        raise ValueError(f"Validation failed for {response_model.__name__}: {exc}") from exc
+        raise ValueError(
+            f"Validation failed for {response_model.__name__}: {exc}"
+        ) from exc

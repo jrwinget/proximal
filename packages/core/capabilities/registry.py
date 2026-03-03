@@ -1,4 +1,5 @@
 """Capability registry — typed functions that can be tools, agent interfaces, or standalone."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
