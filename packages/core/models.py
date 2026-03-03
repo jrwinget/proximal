@@ -1,6 +1,8 @@
 from datetime import date, datetime, timezone
 from enum import StrEnum
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
+from uuid import uuid4
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 import uuid
 
@@ -10,6 +12,83 @@ class Priority(StrEnum):
     high = "P1"
     medium = "P2"
     low = "P3"
+
+
+class EnergyLevel(StrEnum):
+    """User's current energy/capacity level for adaptive planning."""
+
+    low = "low"
+    medium = "medium"
+    high = "high"
+
+
+class EnergyConfig(BaseModel):
+    """Configuration that adapts planning behaviour to the user's energy level.
+
+    Parameters
+    ----------
+    max_task_duration_minutes : int
+        Maximum duration for any single task in minutes.
+    break_frequency : int
+        Number of tasks between mandatory breaks.
+    session_duration_minutes : int
+        Length of a focus session in minutes.
+    max_daily_hours : float
+        Maximum work hours to schedule per day.
+    task_complexity : str
+        Allowed complexity ceiling ("simple", "moderate", "complex").
+    tone : str
+        Communication tone for LLM prompts ("gentle", "balanced", "direct").
+    """
+
+    max_task_duration_minutes: int
+    break_frequency: int
+    session_duration_minutes: int
+    max_daily_hours: float
+    task_complexity: str
+    tone: str
+
+    @classmethod
+    def for_level(cls, level: EnergyLevel) -> "EnergyConfig":
+        """Return a pre-built config for a given energy level.
+
+        Parameters
+        ----------
+        level : EnergyLevel
+            The energy level to build a config for.
+
+        Returns
+        -------
+        EnergyConfig
+            Configuration tuned to the requested energy level.
+        """
+        configs = {
+            EnergyLevel.low: cls(
+                max_task_duration_minutes=15,
+                break_frequency=2,
+                session_duration_minutes=15,
+                max_daily_hours=2.0,
+                task_complexity="simple",
+                tone="gentle",
+            ),
+            EnergyLevel.medium: cls(
+                max_task_duration_minutes=45,
+                break_frequency=4,
+                session_duration_minutes=25,
+                max_daily_hours=5.0,
+                task_complexity="moderate",
+                tone="balanced",
+            ),
+            EnergyLevel.high: cls(
+                max_task_duration_minutes=120,
+                break_frequency=6,
+                session_duration_minutes=50,
+                max_daily_hours=8.0,
+                task_complexity="complex",
+                tone="direct",
+            ),
+        }
+        return configs[level]
 
 
 class Task(BaseModel):
@@ -119,6 +198,80 @@ class UserPreferences(BaseModel):
             f"User preferences: {self.sprint_length_weeks}-week sprints, "
             f"{self.tone} tone, {self.work_hours_per_week} hours/week available, "
             f"prefers {self.preferred_task_size} task sizes"
+        )
+
+
+class UserProfile(BaseModel):
+    """Extended user profile for neurodiverse-aware planning.
+
+    Parameters
+    ----------
+    user_id : str
+        Auto-generated 8-char hex identifier.
+    name : str
+        Display name; defaults to "Friend".
+    focus_style : str
+        One of "hyperfocus", "variable", "short-burst".
+    transition_difficulty : str
+        How hard task-switching is: "low", "moderate", "high".
+    time_blindness : str
+        Severity of time blindness: "low", "moderate", "high".
+    decision_fatigue : str
+        Susceptibility to decision fatigue: "low", "moderate", "high".
+    overwhelm_threshold : int
+        Maximum number of visible tasks before overwhelm.
+    peak_hours : list[int]
+        Hours of the day (0-23) when energy is highest.
+    low_energy_days : list[str]
+        Days of the week that tend to be low energy.
+    max_daily_hours : float
+        Maximum productive hours per day.
+    preferred_session_minutes : int
+        Preferred focus session length in minutes.
+    tone : str
+        Communication tone: "warm", "professional", "direct", "playful".
+    verbosity : str
+        Output detail level: "minimal", "medium", "detailed".
+    celebration_style : str
+        How to acknowledge accomplishments: "quiet", "enthusiastic", "data-driven".
+    """
+
+    user_id: str = Field(default_factory=lambda: uuid4().hex[:8])
+    name: str = "Friend"
+    focus_style: str = "variable"
+    transition_difficulty: str = "moderate"
+    time_blindness: str = "moderate"
+    decision_fatigue: str = "moderate"
+    overwhelm_threshold: int = 5
+    peak_hours: list[int] = Field(default_factory=lambda: [10, 11, 14, 15])
+    low_energy_days: list[str] = Field(default_factory=list)
+    max_daily_hours: float = 6.0
+    preferred_session_minutes: int = 25
+    tone: str = "warm"
+    verbosity: str = "medium"
+    celebration_style: str = "quiet"
+
+    def to_prompt_context(self) -> str:
+        """Convert profile to a string suitable for LLM system prompts.
+
+        Returns
+        -------
+        str
+            A human-readable summary of the user's profile for prompt injection.
+        """
+        return (
+            f"User profile for {self.name}: "
+            f"focus style is {self.focus_style}, "
+            f"transition difficulty is {self.transition_difficulty}, "
+            f"time blindness is {self.time_blindness}, "
+            f"decision fatigue is {self.decision_fatigue}, "
+            f"overwhelm threshold is {self.overwhelm_threshold} tasks, "
+            f"peak hours are {self.peak_hours}, "
+            f"max {self.max_daily_hours} daily hours, "
+            f"preferred session length is {self.preferred_session_minutes} minutes, "
+            f"tone preference is {self.tone}, "
+            f"verbosity is {self.verbosity}, "
+            f"celebration style is {self.celebration_style}."
         )
 
 

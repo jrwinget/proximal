@@ -1,4 +1,3 @@
-import os
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import json
@@ -13,20 +12,6 @@ def session_manager():
     # clear any existing sessions
     _sessions.clear()
     return SessionManager()
-
-
-@pytest.fixture
-def mock_weaviate():
-    """Mock Weaviate client for tests"""
-    with patch("packages.core.session.weaviate_client") as mock:
-        mock.schema.get.return_value = {"classes": []}
-        mock.query.get.return_value.with_near_text.return_value.with_limit.return_value.do.return_value = {
-            "data": {"Get": {"ConversationHistory": []}}
-        }
-        # set up data_object mock properly
-        mock.data_object = MagicMock()
-        mock.data_object.create = MagicMock()
-        yield mock
 
 
 class TestSessionManager:
@@ -89,8 +74,8 @@ class TestSessionManager:
         assert len(updated.messages) == 2
         assert updated.clarification_count == 1  # only user messages increase count
 
-    def test_complete_session(self, session_manager, mock_weaviate):
-        """Test completing a session and persisting to Weaviate"""
+    def test_complete_session(self, session_manager):
+        """Test completing a session"""
         session = session_manager.create_session("Test goal")
         session_id = session.session_id
         session.add_message(MessageRole.user, "Test message")
@@ -101,15 +86,7 @@ class TestSessionManager:
         # session should be removed from active sessions
         assert session_id not in session_manager.sessions
 
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
-            mock_weaviate.data_object.create.assert_not_called()
-        else:
-            mock_weaviate.data_object.create.assert_called_once()
-            call_args = mock_weaviate.data_object.create.call_args
-            assert call_args[1]["class_name"] == "ConversationHistory"
-            assert "session_id" in call_args[1]["data_object"]
-
-    def test_get_user_preferences_default(self, session_manager, mock_weaviate):
+    def test_get_user_preferences_default(self, session_manager):
         """Test getting default user preferences"""
         prefs = session_manager.get_user_preferences()
 
@@ -118,7 +95,7 @@ class TestSessionManager:
         assert prefs.tone == "professional"
         assert prefs.work_hours_per_week == 40
 
-    def test_save_user_preferences(self, session_manager, mock_weaviate):
+    def test_save_user_preferences(self, session_manager):
         """Test saving user preferences"""
         prefs = UserPreferences(
             user_id="test_user",
@@ -133,11 +110,6 @@ class TestSessionManager:
         cached = session_manager.get_user_preferences("test_user")
         assert cached.sprint_length_weeks == 1
         assert cached.tone == "casual"
-
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
-            mock_weaviate.data_object.create.assert_not_called()
-        else:
-            mock_weaviate.data_object.create.assert_called()
 
 
 @pytest.mark.asyncio

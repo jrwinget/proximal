@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, Any, Optional, Literal, List
+from typing import Dict, Any, Optional, Literal
 import json
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -13,7 +13,7 @@ from ..providers.exceptions import (
     AgentValidationError,
 )
 from ..session import session_manager
-from ..memory import client as mem
+from .. import memory
 from ..observability import trace_agent_operation, get_observability_logger
 from ..fault_tolerance import with_retry, with_timeout
 from ..settings import get_settings
@@ -533,9 +533,7 @@ class LiaisonAgent(PlannerAgent):
 
         return result
 
-    def _build_system_prompt(
-        self, message_type: str, audience: str, tone: str
-    ) -> str:
+    def _build_system_prompt(self, message_type: str, audience: str, tone: str) -> str:
         """
         Build comprehensive system prompt with role definition and guidelines.
 
@@ -663,9 +661,9 @@ Use the structure guidelines above but adapt naturally - don't be overly formula
             if tone_examples:
                 examples_section = f"""Here's an example of a great {message_type} message with {tone} tone:
 
-INPUT: {tone_examples['input']}
+INPUT: {tone_examples["input"]}
 
-OUTPUT: {json.dumps(tone_examples['output'], indent=2)}
+OUTPUT: {json.dumps(tone_examples["output"], indent=2)}
 
 ---
 
@@ -677,10 +675,16 @@ OUTPUT: {json.dumps(tone_examples['output'], indent=2)}
             context_lines.append("Additional context:")
             for key, value in context.items():
                 if isinstance(value, list):
-                    context_lines.append(f"  - {key}: {', '.join(str(v) for v in value)}")
+                    context_lines.append(
+                        f"  - {key}: {', '.join(str(v) for v in value)}"
+                    )
                 else:
                     context_lines.append(f"  - {key}: {value}")
-        context_section = "\n".join(context_lines) if context_lines else "No additional context provided"
+        context_section = (
+            "\n".join(context_lines)
+            if context_lines
+            else "No additional context provided"
+        )
 
         return f"""{examples_section}Now draft a {message_type} message with these parameters:
 
@@ -712,7 +716,7 @@ Return valid JSON with subject, message, and tone fields exactly as specified.""
             # Try to extract JSON from response if it's wrapped in text
             import re
 
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
+            json_match = re.search(r"\{.*\}", response, re.DOTALL)
             if json_match:
                 result = json.loads(json_match.group())
             else:
@@ -793,7 +797,7 @@ Return valid JSON with subject, message, and tone fields exactly as specified.""
             else:
                 subject = f"Update: {goal[:50]}"
                 message = full_message
-        except KeyError as e:
+        except KeyError:
             # Fallback to absolute minimum if template variables don't match
             subject = f"Update: {goal[:50]}"
             message = f"Update regarding {goal}.\n\nStatus: {context.get('status', 'in progress')}"
@@ -878,25 +882,39 @@ Return valid JSON with subject, message, and tone fields exactly as specified.""
         self, message_type: str, result: Dict[str, Any], method: str
     ) -> None:
         """
-        Persist drafted message to vector memory for future learning.
+        Persist drafted message to memory for future learning.
 
         Failures here don't block message generation - we log and continue.
         """
+        import asyncio
+
+        content = json.dumps(
+            {
+                "message_type": message_type,
+                "subject": result.get("subject", ""),
+                "message": result["message"],
+                "tone": result["tone"],
+                "generation_method": method,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
+
         try:
-            mem.batch.add_data_object(
-                {
-                    "role": "liaison",
-                    "message_type": message_type,
-                    "subject": result.get("subject", ""),
-                    "message": result["message"],
-                    "tone": result["tone"],
-                    "generation_method": method,
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                },
-                "Memory",
-            )
+            coro = memory.store("liaison", content)
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    pool.submit(asyncio.run, coro).result()
+            else:
+                asyncio.run(coro)
         except Exception as e:
-            # Don't fail message drafting if memory persistence fails
+            # don't fail message drafting if memory persistence fails
             self.logger.logger.warning(
                 f"Failed to persist message to memory: {e}",
                 extra={"error_type": type(e).__name__},

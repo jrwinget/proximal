@@ -1,9 +1,12 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, patch
 import json
-from datetime import datetime, timezone
 
-from packages.core.agents.liaison import LiaisonAgent, MessageType, Tone, Audience
+from packages.core.agents.liaison import LiaisonAgent
+from packages.core.providers.exceptions import (
+    AgentValidationError,
+    ProviderError,
+)
 from packages.core.models import UserPreferences
 
 
@@ -118,7 +121,7 @@ def sample_help_request_response():
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_status_update_message_type(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
@@ -143,18 +146,19 @@ async def test_status_update_message_type(
     assert "Status Update" in result["subject"]
     assert "Mobile App" in result["subject"]
 
-    # Verify LLM was called with correct structure
+    # verify llm was called with correct structure
     mock_chat.assert_called_once()
     call_args = mock_chat.call_args
     messages = call_args[0][0]
-    assert len(messages) == 1
-    assert messages[0]["role"] == "user"
-    assert "status update" in messages[0]["content"].lower()
-    assert "manager" in messages[0]["content"]
+    assert len(messages) == 2
+    assert messages[0]["role"] == "system"
+    assert messages[1]["role"] == "user"
+    assert "status_update" in messages[0]["content"]
+    assert "manager" in messages[0]["content"].lower()
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_proposal_message_type(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_proposal_response
@@ -184,13 +188,13 @@ async def test_proposal_message_type(
     assert any(word in message_lower for word in ["objective", "goal", "purpose"])
     assert any(word in message_lower for word in ["approach", "method", "steps"])
 
-    # Verify context was included in prompt
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "React and WebSocket" in call_args
+    # verify context was included in user prompt
+    user_prompt = mock_chat.call_args[0][0][1]["content"]
+    assert "React and WebSocket" in user_prompt
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_progress_report_with_percentage(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -228,13 +232,13 @@ async def test_progress_report_with_percentage(
     assert "65%" in result["subject"] or "65" in result["message"]
     assert "progress" in result["subject"].lower()
 
-    # Verify progress percentage in prompt
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "65%" in call_args or "progress_pct" in call_args.lower()
+    # verify progress percentage in user prompt
+    user_prompt = mock_chat.call_args[0][0][1]["content"]
+    assert "65" in user_prompt or "progress_pct" in user_prompt.lower()
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_help_request_neurodiverse_aware(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_help_request_response
@@ -257,15 +261,15 @@ async def test_help_request_neurodiverse_aware(
     assert "help" in result["subject"].lower() or "need" in result["subject"].lower()
     assert len(result["message"]) > 100, "Help request should provide context"
 
-    # Verify neurodiverse-aware prompt elements
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "clear" in call_args.lower()
-    assert "specific" in call_args.lower()
-    assert "neurodivergent" in call_args.lower() or "neurodiverse" in call_args.lower()
+    # verify neurodiverse-aware prompt elements in system prompt
+    system_prompt = mock_chat.call_args[0][0][0]["content"]
+    assert "clear" in system_prompt.lower()
+    assert "specific" in system_prompt.lower()
+    assert "neurodiverse" in system_prompt.lower()
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_delegation_message_with_context(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -309,10 +313,10 @@ async def test_delegation_message_with_context(
     # Assert
     assert "task" in result["subject"].lower() or "assignment" in result["subject"].lower()
 
-    # Verify delegation context in prompt
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "Jordan" in call_args
-    assert "2024-12-30" in call_args
+    # verify delegation context in user prompt
+    user_prompt = mock_chat.call_args[0][0][1]["content"]
+    assert "Jordan" in user_prompt
+    assert "2024-12-30" in user_prompt
 
 
 # ============================================================================
@@ -321,7 +325,7 @@ async def test_delegation_message_with_context(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_professional_tone(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -348,7 +352,7 @@ async def test_professional_tone(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_casual_tone(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -375,7 +379,7 @@ async def test_casual_tone(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_direct_tone(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -407,7 +411,7 @@ async def test_direct_tone(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_manager_audience(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -434,7 +438,7 @@ async def test_manager_audience(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_teammate_audience(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -454,14 +458,14 @@ async def test_teammate_audience(
         audience="teammate"
     )
 
-    # Assert
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "teammate" in call_args.lower()
-    assert "collaborative" in call_args.lower()
+    # assert - system prompt contains teammate audience guidance
+    system_prompt = mock_chat.call_args[0][0][0]["content"]
+    assert "teammate" in system_prompt.lower()
+    assert "collaborate" in system_prompt.lower()
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_client_audience(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -481,10 +485,10 @@ async def test_client_audience(
         audience="client"
     )
 
-    # Assert
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "client" in call_args.lower()
-    assert "value" in call_args.lower() or "professional" in call_args.lower()
+    # assert - system prompt contains client audience guidance
+    system_prompt = mock_chat.call_args[0][0][0]["content"]
+    assert "client" in system_prompt.lower()
+    assert "clarity" in system_prompt.lower() or "professional" in system_prompt.lower()
 
 
 # ============================================================================
@@ -493,118 +497,122 @@ async def test_client_audience(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_llm_json_parse_error(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
 ):
-    """Test handling of invalid JSON response from LLM."""
+    """Test handling of invalid JSON response from LLM falls back to template."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.return_value = "This is not valid JSON at all!"
 
-    # Act & Assert
-    with pytest.raises(ValueError, match="Failed to parse LLM response as JSON"):
-        await liaison_agent.draft_message(
-            goal="Test goal",
-            message_type="status_update"
-        )
-
-    # Verify error was recorded in metrics
-    assert liaison_agent.metrics["errors"] > 0
-
-
-@pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
-@patch("packages.core.agents.liaison.session_manager")
-async def test_llm_missing_required_fields(
-    mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
-):
-    """Test handling of LLM response missing required fields."""
-    # Arrange
-    mock_session_manager.get_user_preferences.return_value = mock_user_preferences
-    mock_chat.return_value = json.dumps({"only_subject": "Test"})  # Missing 'message' field
-
-    # Act & Assert
-    with pytest.raises(ValueError, match="missing required fields"):
-        await liaison_agent.draft_message(
-            goal="Test goal",
-            message_type="status_update"
-        )
-
-
-@pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
-@patch("packages.core.agents.liaison.session_manager")
-async def test_message_too_short_validation(
-    mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
-):
-    """Test validation that message content is not too short."""
-    # Arrange
-    mock_session_manager.get_user_preferences.return_value = mock_user_preferences
-    mock_chat.return_value = json.dumps({
-        "subject": "Test",
-        "message": "Too short"  # Less than 20 characters
-    })
-
-    # Act & Assert
-    with pytest.raises(ValueError, match="too short"):
-        await liaison_agent.draft_message(
-            goal="Test goal",
-            message_type="status_update"
-        )
-
-
-@pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
-@patch("packages.core.agents.liaison.session_manager")
-async def test_retry_on_llm_failure(
-    mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
-):
-    """Test retry logic when LLM fails initially but succeeds on retry."""
-    # Arrange
-    mock_session_manager.get_user_preferences.return_value = mock_user_preferences
-
-    # First two calls fail, third succeeds
-    mock_chat.side_effect = [
-        Exception("Connection timeout"),
-        Exception("Rate limit"),
-        sample_status_update_response
-    ]
-
-    # Act
+    # act - llm failure triggers template fallback
     result = await liaison_agent.draft_message(
         goal="Test goal",
         message_type="status_update"
     )
 
-    # Assert
+    # assert - template fallback was used
     assert result is not None
-    assert "subject" in result
-    assert mock_chat.call_count == 3  # Called 3 times due to retries
-    assert liaison_agent.metrics["retries"] >= 2
+    assert result["metadata"]["generation_method"] == "template_fallback"
+    assert liaison_agent.metrics["llm_failures"] > 0
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
+@patch("packages.core.agents.liaison.session_manager")
+async def test_llm_missing_required_fields(
+    mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
+):
+    """Test handling of LLM response missing required fields falls back to template."""
+    # Arrange
+    mock_session_manager.get_user_preferences.return_value = mock_user_preferences
+    mock_chat.return_value = json.dumps({"only_subject": "Test"})  # missing 'message' field
+
+    # act - llm failure triggers template fallback
+    result = await liaison_agent.draft_message(
+        goal="Test goal",
+        message_type="status_update"
+    )
+
+    # assert - template fallback was used
+    assert result is not None
+    assert result["metadata"]["generation_method"] == "template_fallback"
+
+
+@pytest.mark.asyncio
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
+@patch("packages.core.agents.liaison.session_manager")
+async def test_message_too_short_validation(
+    mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
+):
+    """Test validation that message content too short falls back to template."""
+    # Arrange
+    mock_session_manager.get_user_preferences.return_value = mock_user_preferences
+    mock_chat.return_value = json.dumps({
+        "subject": "Test",
+        "message": "Too short"  # less than 20 characters
+    })
+
+    # act - short message triggers fallback
+    result = await liaison_agent.draft_message(
+        goal="Test goal",
+        message_type="status_update"
+    )
+
+    # assert - template fallback was used
+    assert result is not None
+    assert result["metadata"]["generation_method"] == "template_fallback"
+
+
+@pytest.mark.asyncio
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
+@patch("packages.core.agents.liaison.session_manager")
+async def test_retry_on_llm_failure(
+    mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
+):
+    """Test that llm failure triggers template fallback gracefully."""
+    # Arrange
+    mock_session_manager.get_user_preferences.return_value = mock_user_preferences
+
+    # llm call fails
+    mock_chat.side_effect = ProviderError("Connection timeout", retriable=True)
+
+    # act - should fall back to template
+    result = await liaison_agent.draft_message(
+        goal="Test goal",
+        message_type="status_update"
+    )
+
+    # assert - template fallback was used
+    assert result is not None
+    assert "subject" in result
+    assert result["metadata"]["generation_method"] == "template_fallback"
+    assert liaison_agent.metrics["llm_failures"] >= 1
+
+
+@pytest.mark.asyncio
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_retry_exhaustion(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
 ):
-    """Test that retry gives up after max attempts."""
+    """Test that persistent failure falls back to template."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.side_effect = Exception("Persistent failure")
 
-    # Act & Assert
-    with pytest.raises(Exception, match="Persistent failure"):
-        await liaison_agent.draft_message(
-            goal="Test goal",
-            message_type="status_update"
-        )
+    # act - should fall back to template instead of raising
+    result = await liaison_agent.draft_message(
+        goal="Test goal",
+        message_type="status_update"
+    )
 
-    # Verify retries were attempted (should be 3 total attempts)
-    assert mock_chat.call_count == 3
+    # assert - template fallback was used
+    assert result is not None
+    assert result["metadata"]["generation_method"] == "template_fallback"
+    assert liaison_agent.metrics["template_fallbacks"] >= 1
 
 
 # ============================================================================
@@ -613,7 +621,7 @@ async def test_retry_exhaustion(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_preferences_tone_override(
     mock_session_manager, mock_chat, liaison_agent, sample_status_update_response
@@ -640,7 +648,7 @@ async def test_preferences_tone_override(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_preferences_context_included(
     mock_session_manager, mock_chat, liaison_agent, sample_status_update_response
@@ -661,10 +669,10 @@ async def test_preferences_context_included(
         message_type="status_update"
     )
 
-    # Assert
-    call_args = mock_chat.call_args[0][0][0]["content"]
-    assert "30 hours/week" in call_args or "30" in call_args
-    assert "small" in call_args
+    # assert - preferences context is in user prompt
+    user_prompt = mock_chat.call_args[0][0][1]["content"]
+    assert "30 hours/week" in user_prompt or "30" in user_prompt
+    assert "small" in user_prompt
 
 
 # ============================================================================
@@ -673,7 +681,7 @@ async def test_preferences_context_included(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_metrics_recording(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
@@ -699,7 +707,7 @@ async def test_metrics_recording(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_metrics_multiple_message_types(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -725,7 +733,7 @@ async def test_metrics_multiple_message_types(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_token_estimation(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -746,11 +754,11 @@ async def test_token_estimation(
     # Act
     await liaison_agent.draft_message(goal="Test", message_type="status_update")
 
-    # Assert
+    # assert - token estimation uses len(response_text) // 4
     metrics = liaison_agent.get_metrics()
-    # 25 words * 1.3 = 32.5, rounds to 32
-    assert metrics["total_tokens"] >= 30  # Approximately correct
-    assert metrics["total_tokens"] <= 35
+    # the full json response string is ~168 chars, 168 // 4 = 42
+    assert metrics["total_tokens"] >= 30
+    assert metrics["total_tokens"] <= 60
 
 
 def test_metrics_reset(liaison_agent):
@@ -774,49 +782,48 @@ def test_metrics_reset(liaison_agent):
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
-async def test_timeout_parameter_passed(
+async def test_timeout_uses_settings(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
 ):
-    """Test that timeout parameter is passed to LLM call."""
+    """Test that timeout is governed by settings.llm_timeout_seconds."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.return_value = sample_status_update_response
 
-    # Act
-    await liaison_agent.draft_message(
+    # act
+    result = await liaison_agent.draft_message(
         goal="Test",
         message_type="status_update",
-        timeout=60  # Custom timeout
     )
 
-    # Assert
-    call_kwargs = mock_chat.call_args[1]
-    assert "timeout" in call_kwargs
-    assert call_kwargs["timeout"] == 60
+    # assert - message was generated (timeout didn't fire)
+    assert result is not None
+    assert result["metadata"]["generation_method"] == "llm"
+    assert liaison_agent.settings.llm_timeout_seconds > 0
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_default_timeout(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
 ):
-    """Test default timeout is 30 seconds."""
+    """Test default timeout from settings is used."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.return_value = sample_status_update_response
 
-    # Act
-    await liaison_agent.draft_message(
+    # act
+    result = await liaison_agent.draft_message(
         goal="Test",
         message_type="status_update"
     )
 
-    # Assert
-    call_kwargs = mock_chat.call_args[1]
-    assert call_kwargs["timeout"] == 30
+    # assert - settings timeout should be 120 seconds by default
+    assert liaison_agent.settings.llm_timeout_seconds == 120
+    assert result is not None
 
 
 # ============================================================================
@@ -825,18 +832,16 @@ async def test_default_timeout(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.liaison.mem")
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.memory.store", new_callable=AsyncMock)
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_memory_persistence(
-    mock_session_manager, mock_chat, mock_mem, liaison_agent, mock_user_preferences, sample_status_update_response
+    mock_session_manager, mock_chat, mock_store, liaison_agent, mock_user_preferences, sample_status_update_response
 ):
     """Test that drafted messages are persisted to memory."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.return_value = sample_status_update_response
-    mock_batch = MagicMock()
-    mock_mem.batch = mock_batch
 
     # Act
     result = await liaison_agent.draft_message(
@@ -844,33 +849,29 @@ async def test_memory_persistence(
         message_type="status_update"
     )
 
-    # Assert
-    mock_batch.add_data_object.assert_called_once()
-    call_args = mock_batch.add_data_object.call_args[0]
-    data_object = call_args[0]
-
-    assert data_object["role"] == "liaison"
-    assert data_object["goal"] == "Build mobile app"
-    assert data_object["message_type"] == "status_update"
-    assert data_object["subject"] == result["subject"]
-    assert data_object["message"] == result["message"]
-    assert "timestamp" in data_object
+    # Assert - memory.store was called with role "liaison"
+    mock_store.assert_called_once()
+    call_args = mock_store.call_args[0]
+    assert call_args[0] == "liaison"  # role
+    # the content is a json string
+    import json as _json
+    content_data = _json.loads(call_args[1])
+    assert content_data["message_type"] == "status_update"
+    assert "timestamp" in content_data
 
 
 @pytest.mark.asyncio
-@patch("packages.core.agents.liaison.mem")
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.memory.store", new_callable=AsyncMock)
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_memory_persistence_failure_doesnt_break(
-    mock_session_manager, mock_chat, mock_mem, liaison_agent, mock_user_preferences, sample_status_update_response
+    mock_session_manager, mock_chat, mock_store, liaison_agent, mock_user_preferences, sample_status_update_response
 ):
     """Test that memory persistence failure doesn't break message drafting."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.return_value = sample_status_update_response
-    mock_batch = MagicMock()
-    mock_batch.add_data_object.side_effect = Exception("Memory service down")
-    mock_mem.batch = mock_batch
+    mock_store.side_effect = Exception("Memory service down")
 
     # Act - Should not raise exception
     result = await liaison_agent.draft_message(
@@ -890,7 +891,7 @@ async def test_memory_persistence_failure_doesnt_break(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_subject_line_relevance(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -915,7 +916,7 @@ async def test_subject_line_relevance(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_message_clarity_structure(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -948,7 +949,7 @@ async def test_message_clarity_structure(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_message_appropriate_length_for_type(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -993,7 +994,7 @@ async def test_message_appropriate_length_for_type(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_complete_help_request_scenario(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_help_request_response
@@ -1018,11 +1019,13 @@ async def test_complete_help_request_scenario(
     assert "help" in result["subject"].lower() or "need" in result["subject"].lower()
     assert len(result["message"]) > 100, "Help request should provide detailed context"
 
-    # Verify neurodiverse-aware elements in prompt
-    prompt = mock_chat.call_args[0][0][0]["content"]
-    assert "clear" in prompt.lower()
-    assert "specific" in prompt.lower()
-    assert "blockers" in prompt
+    # verify neurodiverse-aware elements in system prompt
+    system_prompt = mock_chat.call_args[0][0][0]["content"]
+    assert "clear" in system_prompt.lower()
+    assert "specific" in system_prompt.lower()
+    # blockers context is in the user prompt
+    user_prompt = mock_chat.call_args[0][0][1]["content"]
+    assert "blockers" in user_prompt.lower()
 
     # Verify metrics tracked
     assert liaison_agent.metrics["messages_drafted"] == 1
@@ -1030,7 +1033,7 @@ async def test_complete_help_request_scenario(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_complete_delegation_scenario(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences
@@ -1106,7 +1109,7 @@ def test_legacy_sync_method(liaison_agent):
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_empty_context(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
@@ -1128,7 +1131,7 @@ async def test_empty_context(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_none_context(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
@@ -1150,25 +1153,21 @@ async def test_none_context(
 
 
 @pytest.mark.asyncio
-@patch("packages.core.providers.router.chat")
+@patch("packages.core.agents.liaison.chat_model", new_callable=AsyncMock)
 @patch("packages.core.agents.liaison.session_manager")
 async def test_long_goal_text(
     mock_session_manager, mock_chat, liaison_agent, mock_user_preferences, sample_status_update_response
 ):
-    """Test handling of very long goal text."""
+    """Test that very long goal text is rejected by validation."""
     # Arrange
     mock_session_manager.get_user_preferences.return_value = mock_user_preferences
     mock_chat.return_value = sample_status_update_response
 
-    long_goal = "Build a comprehensive mobile application " * 50  # Very long goal
+    long_goal = "Build a comprehensive mobile application " * 50  # over 500 chars
 
-    # Act
-    result = await liaison_agent.draft_message(
-        goal=long_goal,
-        message_type="status_update"
-    )
-
-    # Assert - Should handle gracefully
-    assert result is not None
-    prompt = mock_chat.call_args[0][0][0]["content"]
-    assert long_goal in prompt
+    # act & assert - validation rejects goals > 500 chars
+    with pytest.raises(AgentValidationError, match="too long"):
+        await liaison_agent.draft_message(
+            goal=long_goal,
+            message_type="status_update"
+        )

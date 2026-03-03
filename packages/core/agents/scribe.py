@@ -3,7 +3,7 @@ from typing import List, Dict
 from . import PlannerAgent
 from .registry import register_agent
 from .planner import _json
-from ..memory import client as mem
+from .. import memory
 
 
 @register_agent("scribe")
@@ -18,5 +18,19 @@ class ScribeAgent(PlannerAgent):
 
     def record_plan(self, plan: List[Dict]) -> str:
         """Store the plan in memory and return confirmation."""
-        mem.batch.add_data_object({"role": "scribe", "content": _json(plan)}, "Memory")
+        import asyncio
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        coro = memory.store("scribe", _json(plan))
+        if loop and loop.is_running():
+            import concurrent.futures
+
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                pool.submit(asyncio.run, coro).result()
+        else:
+            asyncio.run(coro)
         return "recorded"

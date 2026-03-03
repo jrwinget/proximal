@@ -55,7 +55,7 @@ class Settings(BaseSettings):
         import os
 
         # skip .env file check in test environment
-        if os.getenv("SKIP_WEAVIATE_CONNECTION"):
+        if os.getenv("SKIP_DB_CONNECTION") or os.getenv("SKIP_WEAVIATE_CONNECTION"):
             return self
 
         env_path = Path(".env")
@@ -80,6 +80,47 @@ class Settings(BaseSettings):
             raise ValueError(f"Unknown PROVIDER_NAME '{self.provider_name}'")
 
         return self
+
+    def get_litellm_model(self) -> str:
+        """Return the litellm-compatible model string for the configured provider.
+
+        Returns
+        -------
+        str
+            Model string formatted for litellm routing, e.g. ``"ollama/llama3"``,
+            ``"gpt-4o-mini"``, or ``"anthropic/claude-3-haiku"``.
+        """
+        prov = self.provider_name.lower()
+        if prov == "ollama":
+            return f"ollama/{self.ollama_model}"
+        if prov == "anthropic":
+            return f"anthropic/{self.anthropic_model}"
+        # openai models don't need a prefix
+        return self.openai_model
+
+    def get_litellm_params(self) -> dict:
+        """Return provider-specific params for litellm.acompletion.
+
+        Returns
+        -------
+        dict
+            Dictionary of keyword arguments (e.g. ``api_key``, ``api_base``)
+            suitable for passing to ``litellm.acompletion(**params)``.
+        """
+        prov = self.provider_name.lower()
+        if prov == "ollama":
+            return {"api_base": self.ollama_base_url}
+        if prov == "openai":
+            params: dict = {"api_key": self.openai_api_key}
+            if self.openai_base_url != "https://api.openai.com/v1":
+                params["api_base"] = self.openai_base_url
+            return params
+        if prov == "anthropic":
+            params = {"api_key": self.anthropic_api_key}
+            if self.anthropic_base_url != "https://api.anthropic.com/v1":
+                params["api_base"] = self.anthropic_base_url
+            return params
+        return {}
 
 
 @lru_cache

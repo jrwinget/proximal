@@ -5,12 +5,11 @@ import httpx
 import json
 import sys
 import os
+import asyncio
 from typing import Optional, List, Dict
 from rich.console import Console
 from rich.table import Table
-from rich.prompt import Prompt, Confirm
-from rich.panel import Panel
-from rich.markdown import Markdown
+from rich.prompt import Prompt
 
 app = typer.Typer(help="Proximal CLI - Transform ideas into actionable project plans")
 console = Console()
@@ -19,12 +18,71 @@ console = Console()
 API_URL = os.getenv("PROXIMAL_API_URL", "http://localhost:7315")
 API_KEY = os.getenv("PROXIMAL_API_KEY")
 
+
 def _get_headers() -> dict:
     """get http headers including api key if configured"""
     headers = {}
     if API_KEY:
         headers["X-API-Key"] = API_KEY
     return headers
+
+
+def _run_async(coro):
+    """run an async coroutine from synchronous cli context"""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result()
+    else:
+        return asyncio.run(coro)
+
+
+# lazy imports to avoid loading pipeline at module level
+def _import_pipelines():
+    """import pipeline functions lazily"""
+    from apps.server.pipeline import run_direct_pipeline, run_interactive_pipeline
+
+    return run_direct_pipeline, run_interactive_pipeline
+
+
+# module-level references for testability (set lazily)
+run_direct_pipeline = None
+run_interactive_pipeline = None
+
+
+def _get_direct_pipeline():
+    """get the direct pipeline function, importing lazily"""
+    global run_direct_pipeline
+    if run_direct_pipeline is None:
+        run_direct_pipeline, _ = _import_pipelines()
+    return run_direct_pipeline
+
+
+def _get_interactive_pipeline():
+    """get the interactive pipeline function, importing lazily"""
+    global run_interactive_pipeline
+    if run_interactive_pipeline is None:
+        _, run_interactive_pipeline = _import_pipelines()
+    return run_interactive_pipeline
+
+
+def _serialize_plan(plan_data) -> list:
+    """convert plan data to serializable dicts"""
+    result = []
+    for sprint in plan_data:
+        if hasattr(sprint, "model_dump"):
+            result.append(sprint.model_dump())
+        elif isinstance(sprint, dict):
+            result.append(sprint)
+        else:
+            result.append(sprint)
+    return result
 
 
 @app.command()
@@ -37,10 +95,15 @@ def plan(
     interactive: bool = typer.Option(
         False, "--interactive", "-i", help="Enable interactive clarification mode"
     ),
+    server: bool = typer.Option(
+        False, "--server", help="Use API server instead of calling pipeline directly"
+    ),
 ):
     """
     Transform a goal or idea into a structured project plan with tasks and sprints.
 
+    By default, calls the planning pipeline directly without needing a running server.
+    Use --server to route through the API server instead.
     Use --interactive for a conversational planning experience where PlannerAgent
     asks clarifying questions to create a more detailed and personalized plan.
     """
@@ -49,19 +112,29 @@ def plan(
     )
 
     try:
-        if interactive:
-            plan_data = _interactive_planning(goal)
+        if server:
+            # server mode: use HTTP calls
+            if interactive:
+                plan_data = _interactive_planning_server(goal)
+            else:
+                with console.status("Generating plan..."):
+                    response = httpx.post(
+                        f"{API_URL}/plan",
+                        json={"message": goal},
+                        headers=_get_headers(),
+                        timeout=60.0,
+                    )
+                    response.raise_for_status()
+                    plan_data = response.json()
         else:
-            # One-shot planning
-            with console.status("Generating plan..."):
-                response = httpx.post(
-                    f"{API_URL}/plan",
-                    json={"message": goal},
-                    headers=_get_headers(),
-                    timeout=60.0
-                )
-                response.raise_for_status()
-                plan_data = response.json()
+            # direct mode: call pipeline functions directly
+            if interactive:
+                plan_data = _interactive_planning_direct(goal)
+            else:
+                with console.status("Generating plan..."):
+                    pipeline = _get_direct_pipeline()
+                    result = _run_async(pipeline(goal))
+                    plan_data = _serialize_plan(result.get("sprints", []))
 
         if output:
             with open(output, "w") as f:
@@ -80,7 +153,7 @@ def plan(
         sys.exit(1)
     except httpx.RequestError as e:
         console.print(
-            f"[bold red]Error:[/bold red] Could not connect to API server. Is it running?"
+            "[bold red]Error:[/bold red] Could not connect to API server. Is it running?"
         )
         console.print(f"Details: {e}")
         sys.exit(1)
@@ -92,15 +165,56 @@ def plan(
         sys.exit(1)
 
 
-def _interactive_planning(goal: str) -> List[Dict]:
-    """Handle interactive planning with clarification questions"""
+def _interactive_planning_direct(goal: str) -> List[Dict]:
+    """Handle interactive planning by calling pipeline directly."""
+    with console.status("Starting interactive planning session..."):
+        pipeline = _get_interactive_pipeline()
+        result = _run_async(pipeline(goal))
+
+    # handle clarification loop
+    while result.get("needs_clarification"):
+        questions = result.get("clarification_questions", [])
+        if not questions:
+            break
+
+        console.print("\n[bold blue]PlannerAgent Needs Some Clarification:[/bold blue]")
+
+        # display questions
+        for i, question in enumerate(questions, 1):
+            console.print(f"\n[cyan]{i}.[/cyan] {question}")
+
+        # collect answers
+        console.print(
+            "\n[dim]Please answer the questions to help create a better plan:[/dim]"
+        )
+
+        answers = {}
+        for i, question in enumerate(questions, 1):
+            console.print(f"\n[bold]Question {i}:[/bold] {question}")
+            answer = Prompt.ask("[green]Your Answer[/green]")
+            answers[question] = answer
+
+        # integrate answers and re-run the pipeline with enriched goal
+        answers_text = "\n".join(f"{q}: {a}" for q, a in answers.items())
+        enriched_goal = f"{goal}\n\nClarifications:\n{answers_text}"
+
+        console.print()
+        with console.status("Processing your answers..."):
+            direct_pipeline = _get_direct_pipeline()
+            result = _run_async(direct_pipeline(enriched_goal))
+
+    return _serialize_plan(result.get("sprints", []))
+
+
+def _interactive_planning_server(goal: str) -> List[Dict]:
+    """Handle interactive planning with clarification questions via server."""
     # start conversation
     with console.status("Starting interactive planning session..."):
         response = httpx.post(
             f"{API_URL}/conversation/start",
             json={"message": goal},
             headers=_get_headers(),
-            timeout=60.0
+            timeout=60.0,
         )
         response.raise_for_status()
         result = response.json()
@@ -282,7 +396,7 @@ def preferences(
                 f"{API_URL}/preferences",
                 json=updates,
                 headers=_get_headers(),
-                timeout=30.0
+                timeout=30.0,
             )
             response.raise_for_status()
             console.print("[bold green]Preferences Updated Successfully![/bold green]")
@@ -290,9 +404,7 @@ def preferences(
         if show:
             # get current preferences
             response = httpx.get(
-                f"{API_URL}/preferences",
-                headers=_get_headers(),
-                timeout=30.0
+                f"{API_URL}/preferences", headers=_get_headers(), timeout=30.0
             )
             response.raise_for_status()
             prefs = response.json()
@@ -324,6 +436,10 @@ def _display_pretty_plan(plan_data):
         return
 
     for i, sprint in enumerate(plan_data):
+        # support both dict and pydantic model
+        if hasattr(sprint, "model_dump"):
+            sprint = sprint.model_dump()
+
         console.print(f"\n[bold blue]Sprint {i + 1}:[/bold blue] {sprint['name']}")
         console.print(f"[blue]Period:[/blue] {sprint['start']} to {sprint['end']}")
 
@@ -342,7 +458,7 @@ def _display_pretty_plan(plan_data):
                 "P3": "green",
             }.get(task["priority"], "white")
 
-            status = "✓" if task.get("done", False) else "○"
+            status = "+" if task.get("done", False) else "o"
             status_color = "green" if task.get("done", False) else "white"
 
             table.add_row(
@@ -356,9 +472,13 @@ def _display_pretty_plan(plan_data):
         console.print(table)
 
     # add summary
-    total_tasks = sum(len(sprint["tasks"]) for sprint in plan_data)
+    total_tasks = sum(
+        len(s["tasks"] if isinstance(s, dict) else s.tasks) for s in plan_data
+    )
     total_hours = sum(
-        task["estimate_h"] for sprint in plan_data for task in sprint["tasks"]
+        task["estimate_h"] if isinstance(task, dict) else task.estimate_h
+        for s in plan_data
+        for task in (s["tasks"] if isinstance(s, dict) else s.tasks)
     )
     console.print(f"\n[dim]Total: {total_tasks} tasks, {total_hours} hours[/dim]")
 
@@ -367,7 +487,7 @@ def _display_pretty_plan(plan_data):
 def version():
     """Show the version of Proximal CLI."""
     console.print("[bold green]Proximal CLI[/bold green] v0.2.0")
-    console.print("Now with interactive planning and task breakdown! 🌱")
+    console.print("Now with interactive planning and task breakdown!")
 
 
 @app.command()
@@ -392,7 +512,9 @@ def assist(
         orch = Orchestrator()
 
         # use status spinner for long-running operation
-        with console.status("Running orchestration pipeline (this may take a moment)..."):
+        with console.status(
+            "Running orchestration pipeline (this may take a moment)..."
+        ):
             result = orch.run_sync(goal)
 
         # save to file if requested
@@ -409,7 +531,9 @@ def assist(
 
     except OrchestratorError as e:
         console.print(f"[bold red]Orchestration Error:[/bold red] {str(e)}")
-        console.print("[dim]The orchestration pipeline encountered an error. Please check your goal and try again.[/dim]")
+        console.print(
+            "[dim]The orchestration pipeline encountered an error. Please check your goal and try again.[/dim]"
+        )
         sys.exit(1)
     except KeyboardInterrupt:
         console.print("\n[yellow]Orchestration cancelled by user.[/yellow]")
@@ -417,6 +541,36 @@ def assist(
     except Exception as e:
         console.print(f"[bold red]Unexpected Error:[/bold red] {str(e)}")
         console.print("[dim]An unexpected error occurred during orchestration.[/dim]")
+        sys.exit(1)
+
+
+@app.command()
+def mcp_serve():
+    """
+    Start proximal as an MCP (Model Context Protocol) server.
+
+    This exposes proximal's planning tools to any MCP client such as
+    Claude Desktop, VS Code, or Cursor via stdio transport.
+    """
+    try:
+        from apps.mcp_server import main as mcp_main
+
+        console.print("[bold green]Starting MCP server...[/bold green]")
+        console.print(
+            "[dim]Listening on stdio transport. Connect from an MCP client.[/dim]"
+        )
+        asyncio.run(mcp_main())
+    except ImportError:
+        console.print(
+            "[bold red]Error:[/bold red] MCP dependencies not installed. "
+            "Run: pip install proximal[mcp]"
+        )
+        sys.exit(1)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]MCP server stopped.[/yellow]")
+        sys.exit(0)
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {str(e)}")
         sys.exit(1)
 
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
-from typing import List, Dict
-from . import PlannerAgent
+
+from typing import Any
 from .registry import register_agent
 
 
 @register_agent("guardian")
-class GuardianAgent(PlannerAgent):
+class GuardianAgent:
     """Insert well-being reminders into task lists."""
 
     def __init__(self) -> None:  # pragma: no cover - trivial
@@ -14,11 +14,8 @@ class GuardianAgent(PlannerAgent):
     def __repr__(self) -> str:  # pragma: no cover - simple representation
         return "GuardianAgent()"
 
-    def add_nudges(self, tasks: List[Dict]) -> List[Dict]:
+    def add_nudges(self, tasks: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Return tasks with periodic break reminders."""
-        output: List[Dict] = []
-        for idx, task in enumerate(tasks, start=1):
-            output.append(task)
-            if idx % 4 == 0:
-                output.append({"title": "Take a short break", "type": "nudge"})
-        return output
+        from ..capabilities.wellness import add_wellness_nudges
+
+        return add_wellness_nudges(tasks)

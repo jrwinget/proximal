@@ -1,10 +1,11 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .agents import plan_llm
-from .agents import AGENT_REGISTRY, PlannerAgent
+from .agents import AGENT_REGISTRY
+from .capabilities import CAPABILITY_REGISTRY
 from .observability import get_observability_logger, trace_operation
 from .fault_tolerance import with_timeout
 from .providers.exceptions import AgentError
@@ -31,7 +32,7 @@ class Orchestrator:
         self.agent_timeout = agent_timeout
         self.obs_logger = get_observability_logger()
 
-    def _get_agent(self, name: str) -> PlannerAgent:
+    def _get_agent(self, name: str) -> Any:
         """Get agent instance from registry."""
         cls = self.registry.get(name)
         if not cls:
@@ -41,7 +42,7 @@ class Orchestrator:
     async def _call_agent_with_fault_tolerance(
         self,
         agent_name: str,
-        agent: PlannerAgent,
+        agent: Any,
         method: str,
         *args: Any
     ) -> Any:
@@ -174,6 +175,85 @@ class Orchestrator:
                 "failed_agents": failed_agents,
                 "goal": goal
             }
+
+            return results
+
+    async def run_with_capabilities(self, goal: str) -> Dict[str, Any]:
+        """Run workflow using the capability registry instead of agents.
+
+        This is an alternative entry point that uses capabilities directly,
+        bypassing the agent layer. Useful for lighter-weight orchestration.
+
+        Parameters
+        ----------
+        goal : str
+            User's high-level goal.
+
+        Returns
+        -------
+        Dict[str, Any]
+            Dictionary containing results keyed by capability name.
+        """
+        with trace_operation("orchestrator", "run_with_capabilities", goal=goal):
+            logger.info(f"Capability-based workflow for goal: {goal}")
+
+            # run planning capability
+            plan_cap = CAPABILITY_REGISTRY.get("plan")
+            if not plan_cap:
+                raise AgentError("plan capability not registered", agent_name="planner")
+
+            try:
+                tasks_result = await with_timeout(
+                    plan_cap.fn({"goal": goal}),
+                    timeout_seconds=self.agent_timeout,
+                    operation_name="capability.plan",
+                )
+                tasks = [t.model_dump() for t in tasks_result.get("tasks", [])]
+            except Exception as exc:
+                raise AgentError(f"Plan capability failed: {exc}", agent_name="planner") from exc
+
+            # run deterministic capabilities in parallel
+            deterministic = {
+                "create_schedule": tasks,
+                "add_wellness_nudges": tasks,
+                "motivate": goal,
+                "create_focus_sessions": tasks,
+            }
+
+            results: Dict[str, Any] = {"plan": tasks}
+            coros = []
+            cap_names: List[str] = []
+
+            for name, arg in deterministic.items():
+                cap = CAPABILITY_REGISTRY.get(name)
+                if not cap:
+                    continue
+                cap_names.append(name)
+                if asyncio.iscoroutinefunction(cap.fn):
+                    coros.append(with_timeout(
+                        cap.fn(arg),
+                        timeout_seconds=self.agent_timeout,
+                        operation_name=f"capability.{name}",
+                    ))
+                else:
+                    coros.append(with_timeout(
+                        asyncio.to_thread(cap.fn, arg),
+                        timeout_seconds=self.agent_timeout,
+                        operation_name=f"capability.{name}",
+                    ))
+
+            outputs = await asyncio.gather(*coros, return_exceptions=True)
+
+            for name, value in zip(cap_names, outputs):
+                if isinstance(value, Exception):
+                    logger.error(f"Capability {name} failed: {value}")
+                    results[name] = None
+                else:
+                    results[name] = value
+
+            # backward compat
+            if "create_schedule" in results:
+                results["schedule"] = results["create_schedule"]
 
             return results
 
