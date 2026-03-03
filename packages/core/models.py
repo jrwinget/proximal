@@ -1,6 +1,6 @@
 from datetime import date, datetime, timezone
 from enum import StrEnum
-from typing import Optional, List, Dict
+from typing import Any, Optional, List, Dict
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -273,6 +273,77 @@ class UserProfile(BaseModel):
             f"verbosity is {self.verbosity}, "
             f"celebration style is {self.celebration_style}."
         )
+
+
+class WellnessObservationType(StrEnum):
+    """Types of wellness observations Guardian can record."""
+
+    session_start = "session_start"
+    session_end = "session_end"
+    break_taken = "break_taken"
+    break_skipped = "break_skipped"
+    task_completed = "task_completed"
+    extended_work = "extended_work"
+    late_session = "late_session"
+
+
+class EscalationLevel(StrEnum):
+    """Escalation levels for Guardian interventions."""
+
+    gentle_nudge = "gentle_nudge"
+    firm_reminder = "firm_reminder"
+    escalated_warning = "escalated_warning"
+    session_end_suggestion = "session_end_suggestion"
+
+
+class WellnessObservation(BaseModel):
+    """A single wellness observation recorded by Guardian.
+
+    Parameters
+    ----------
+    id : str
+        Auto-generated 8-char hex identifier.
+    user_id : str
+        The user this observation belongs to.
+    session_id : str
+        The session during which this was observed.
+    observation_type : WellnessObservationType
+        What kind of wellness event was observed.
+    data : dict
+        Arbitrary payload data.
+    timestamp : datetime
+        When the observation was made.
+    """
+
+    id: str = Field(default_factory=lambda: uuid4().hex[:8])
+    user_id: str = "default"
+    session_id: str = ""
+    observation_type: WellnessObservationType = WellnessObservationType.session_start
+    data: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class WellnessInsight(BaseModel):
+    """A detected wellness pattern from cross-session analysis."""
+
+    rule_name: str
+    severity: EscalationLevel = EscalationLevel.gentle_nudge
+    message: str
+    data: Dict[str, Any] = Field(default_factory=dict)
+
+
+class WellnessSessionSummary(BaseModel):
+    """Summary of wellness observations for a single session."""
+
+    session_id: str
+    user_id: str = "default"
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    tasks_completed: int = 0
+    breaks_taken: int = 0
+    breaks_skipped: int = 0
+    duration_hours: float = 0.0
+    was_late_session: bool = False
 
 
 class ClarificationRequest(BaseModel):

@@ -1,14 +1,19 @@
 from __future__ import annotations
 import asyncio
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, TYPE_CHECKING
 
 from .agents import plan_llm
 from .agents import AGENT_REGISTRY
 from .capabilities import CAPABILITY_REGISTRY
+from .events import Event, Topics, get_event_bus
 from .observability import get_observability_logger, trace_operation
 from .fault_tolerance import with_timeout
 from .providers.exceptions import AgentError
+
+if TYPE_CHECKING:
+    from .collaboration.context import SharedContext
+    from .models import UserProfile
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +114,17 @@ class Orchestrator:
                 tasks = [t.model_dump() for t in tasks_result.get("tasks", [])]
                 logger.info(f"Planner generated {len(tasks)} tasks")
 
+                # publish plan.created event
+                try:
+                    bus = get_event_bus()
+                    await bus.publish(Event(
+                        topic=Topics.PLAN_CREATED,
+                        source="orchestrator",
+                        data={"goal": goal, "task_count": len(tasks)},
+                    ))
+                except Exception:
+                    logger.debug("Failed to publish plan.created event", exc_info=True)
+
             except Exception as e:
                 logger.error(f"Planner agent failed: {e}", exc_info=True)
                 raise AgentError(f"Failed to generate plan: {e}", agent_name="planner")
@@ -177,6 +193,21 @@ class Orchestrator:
                 "failed_agents": failed_agents,
                 "goal": goal,
             }
+
+            # publish plan.completed event
+            try:
+                bus = get_event_bus()
+                await bus.publish(Event(
+                    topic=Topics.PLAN_COMPLETED,
+                    source="orchestrator",
+                    data={
+                        "goal": goal,
+                        "successful_agents": successful_agents,
+                        "failed_agents": failed_agents,
+                    },
+                ))
+            except Exception:
+                logger.debug("Failed to publish plan.completed event", exc_info=True)
 
             return results
 
@@ -268,3 +299,208 @@ class Orchestrator:
     def run_sync(self, goal: str) -> Dict[str, Any]:
         """Synchronous wrapper for the async run method."""
         return asyncio.run(self.run(goal))
+
+
+class OrchestratorV2:
+    """Phased orchestrator for the v0.4 collaboration protocol."""
+
+    def __init__(self, agent_timeout: float = 30.0) -> None:
+        self.registry = AGENT_REGISTRY
+        self.agent_timeout = agent_timeout
+        self.obs_logger = get_observability_logger()
+
+    def _get_agent(self, name: str) -> Any:
+        """Get agent instance from registry.
+
+        Parameters
+        ----------
+        name : str
+            The registered agent name.
+
+        Returns
+        -------
+        Any
+            An instantiated agent.
+
+        Raises
+        ------
+        ValueError
+            If the agent name is not found in the registry.
+        """
+        cls = self.registry.get(name)
+        if not cls:
+            raise ValueError(f"Agent '{name}' not found in registry")
+        return cls()
+
+    async def _run_agent(
+        self, agent_name: str, agent: Any, context: "SharedContext"
+    ) -> Any:
+        """Run a single agent with fault tolerance.
+
+        Parameters
+        ----------
+        agent_name : str
+            Name of the agent (for logging and output storage).
+        agent : Any
+            The agent instance to run.
+        context : SharedContext
+            The shared workflow context.
+
+        Returns
+        -------
+        Any
+            The agent's output, or ``None`` if the agent failed.
+        """
+        try:
+            with trace_operation("orchestrator_v2", "agent_run", agent=agent_name):
+                result = await with_timeout(
+                    agent.run(context),
+                    timeout_seconds=self.agent_timeout,
+                    operation_name=f"{agent_name}.run",
+                )
+                context.store_output(agent_name, result)
+                return result
+        except Exception as e:
+            logger.error(f"Agent {agent_name} failed in OrchestratorV2: {e}")
+            context.store_output(agent_name, None)
+            return None
+
+    async def _run_phase(
+        self,
+        phase_name: str,
+        agent_names: List[str],
+        context: "SharedContext",
+    ) -> Dict[str, Any]:
+        """Run a set of agents in parallel within a phase.
+
+        Agents are filtered by ``can_contribute(context)`` before execution.
+        Agents that lack the ``BaseAgent`` interface (``run`` and
+        ``can_contribute``) are silently skipped for backward compatibility.
+
+        Parameters
+        ----------
+        phase_name : str
+            Human-readable name of the phase (for logging).
+        agent_names : list[str]
+            Registered names of agents to attempt.
+        context : SharedContext
+            The shared workflow context.
+
+        Returns
+        -------
+        dict[str, Any]
+            Mapping of agent name to output for agents that ran.
+        """
+        logger.info(
+            f"OrchestratorV2 phase '{phase_name}' starting with agents: {agent_names}"
+        )
+
+        coros: List[Any] = []
+        names: List[str] = []
+        for name in agent_names:
+            try:
+                agent = self._get_agent(name)
+                # check if agent supports BaseAgent interface
+                if not hasattr(agent, "run") or not hasattr(agent, "can_contribute"):
+                    continue
+                if not agent.can_contribute(context):
+                    logger.info(f"Agent {name} opted out of phase {phase_name}")
+                    continue
+                coros.append(self._run_agent(name, agent, context))
+                names.append(name)
+            except ValueError:
+                continue
+
+        if not coros:
+            return {}
+
+        outputs = await asyncio.gather(*coros, return_exceptions=True)
+
+        results: Dict[str, Any] = {}
+        for name, value in zip(names, outputs):
+            if isinstance(value, Exception):
+                logger.error(f"Agent {name} raised in phase {phase_name}: {value}")
+                results[name] = None
+            else:
+                results[name] = value
+
+        return results
+
+    async def run(
+        self,
+        goal: str,
+        energy_level: str = "medium",
+        user_profile: "UserProfile | None" = None,
+    ) -> "SharedContext":
+        """Run the full 5-phase orchestration pipeline.
+
+        Parameters
+        ----------
+        goal : str
+            The user's goal.
+        energy_level : str
+            Energy level: low, medium, high.
+        user_profile : UserProfile or None
+            Optional user profile override.
+
+        Returns
+        -------
+        SharedContext
+            The completed shared context with all agent outputs.
+        """
+        from .collaboration.context import SharedContext
+        from .models import EnergyConfig, EnergyLevel, UserProfile
+
+        energy = EnergyLevel(energy_level)
+        profile = user_profile or UserProfile()
+
+        context = SharedContext(
+            goal=goal,
+            user_profile=profile,
+            energy_level=energy,
+            energy_config=EnergyConfig.for_level(energy),
+        )
+
+        with trace_operation("orchestrator_v2", "run", goal=goal):
+            # phase 1: analysis -- planner breaks goal into tasks
+            logger.info("OrchestratorV2 Phase 1: Analysis")
+            await self._run_phase("analysis", ["planner"], context)
+
+            # phase 2: assessment -- guardian checks overwhelm, chronos checks calendar
+            logger.info("OrchestratorV2 Phase 2: Assessment")
+            await self._run_phase("assessment", ["guardian", "chronos"], context)
+
+            # phase 3: adaptation -- all agents read signals and adapt
+            logger.info("OrchestratorV2 Phase 3: Adaptation")
+            await self._run_phase(
+                "adaptation",
+                ["mentor", "liaison", "focusbuddy"],
+                context,
+            )
+
+            # phase 4: execution -- any remaining work
+            # (agents that need signals from phase 3)
+            logger.info("OrchestratorV2 Phase 4: Execution")
+            # no-op in base implementation; agents do their work in phases 1-3
+
+            # phase 5: synthesis -- scribe persists
+            logger.info("OrchestratorV2 Phase 5: Synthesis")
+            await self._run_phase("synthesis", ["scribe"], context)
+
+            # publish plan.completed event
+            try:
+                bus = get_event_bus()
+                await bus.publish(
+                    Event(
+                        topic=Topics.PLAN_COMPLETED,
+                        source="orchestrator_v2",
+                        data={
+                            "goal": goal,
+                            "agents": list(context.agent_outputs.keys()),
+                        },
+                    )
+                )
+            except Exception:
+                pass
+
+            return context

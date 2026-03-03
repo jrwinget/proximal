@@ -12,6 +12,22 @@ from .models import (
     UserPreferences,
 )
 from . import memory
+from .events import Event, Topics, get_event_bus
+
+
+def _try_publish(bus, event: Event) -> None:
+    """Fire-and-forget event publish; never raises."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    if loop and loop.is_running():
+        loop.create_task(bus.publish(event))
+    else:
+        # no running loop; skip publish silently
+        pass
+
 
 # in-memory session store
 _sessions: Dict[str, ConversationState] = {}
@@ -188,6 +204,20 @@ class SessionManager:
         lock = self._get_lock(session.session_id)
         with lock:
             self.store.save(session)
+
+        # publish session.started event (fire-and-forget)
+        try:
+            bus = get_event_bus()
+            event = Event(
+                topic=Topics.SESSION_STARTED,
+                source="session",
+                data={"goal": initial_goal},
+                session_id=session.session_id,
+            )
+            _try_publish(bus, event)
+        except Exception:
+            pass
+
         return session
 
     def get_session(self, session_id: str) -> Optional[ConversationState]:
@@ -226,6 +256,19 @@ class SessionManager:
         self, session_id: str, final_plan: Optional[List] = None
     ) -> None:
         """Mark session as complete and persist to SQLite"""
+        # publish session.ended event (fire-and-forget)
+        try:
+            bus = get_event_bus()
+            event = Event(
+                topic=Topics.SESSION_ENDED,
+                source="session",
+                session_id=session_id,
+                data={"final_plan": bool(final_plan)},
+            )
+            _try_publish(bus, event)
+        except Exception:
+            pass
+
         lock = self._get_lock(session_id)
         with lock:
             session = self.store.get(session_id)

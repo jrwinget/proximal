@@ -1,20 +1,31 @@
 from __future__ import annotations
-from typing import List, Dict
-from . import PlannerAgent
+from typing import Any, List, Dict
+from .base import BaseAgent
 from .registry import register_agent
 from .planner import _json
 from .. import memory
 
 
 @register_agent("scribe")
-class ScribeAgent(PlannerAgent):
+class ScribeAgent(BaseAgent):
     """Persist plans into shared memory."""
+
+    name = "scribe"
 
     def __init__(self) -> None:  # pragma: no cover - trivial
         pass
 
     def __repr__(self) -> str:  # pragma: no cover - simple representation
         return "ScribeAgent()"
+
+    async def run(self, context) -> Any:
+        """Persist the full shared context to storage."""
+        tasks = context.tasks or []
+        self.record_plan(tasks)
+        return {"saved": True, "task_count": len(tasks)}
+
+    def can_contribute(self, context) -> bool:
+        return True
 
     def record_plan(self, plan: List[Dict]) -> str:
         """Store the plan in memory and return confirmation."""

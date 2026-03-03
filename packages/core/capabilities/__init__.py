@@ -7,6 +7,7 @@ from . import productivity  # noqa: F401
 from . import wellness  # noqa: F401
 from . import communication  # noqa: F401
 from . import planning  # noqa: F401
+from . import voice  # noqa: F401
 
 __all__ = [
     "Capability",

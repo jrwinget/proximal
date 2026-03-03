@@ -1,4 +1,3 @@
-
 from packages.core.agents.guardian import GuardianAgent
 from packages.core.agents.mentor import MentorAgent
 from packages.core.agents.scribe import ScribeAgent
@@ -22,11 +21,10 @@ def test_mentor_motivates():
 
 def test_scribe_records(monkeypatch):
     from unittest.mock import AsyncMock
+
     agent = ScribeAgent()
     mock_store = AsyncMock()
-    monkeypatch.setattr(
-        "packages.core.agents.scribe.memory.store", mock_store
-    )
+    monkeypatch.setattr("packages.core.agents.scribe.memory.store", mock_store)
     plan = [{"title": "Task"}]
     agent.record_plan(plan)
     assert mock_store.called

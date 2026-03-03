@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from enum import StrEnum
 
-from . import PlannerAgent
+from .base import BaseAgent
 from .registry import register_agent
 from ..providers.router import chat as chat_model
 from ..providers.exceptions import (
@@ -173,7 +173,7 @@ Next: {next_steps}""",
 
 
 @register_agent("liaison")
-class LiaisonAgent(PlannerAgent):
+class LiaisonAgent(BaseAgent):
     """
     Production-grade LLM-powered communication assistant.
 
@@ -263,8 +263,9 @@ class LiaisonAgent(PlannerAgent):
         ... )
     """
 
+    name = "liaison"
+
     def __init__(self) -> None:
-        super().__init__()
         self.settings = get_settings()
         self.logger = get_observability_logger()
         self.metrics: Dict[str, Any] = {
@@ -281,6 +282,24 @@ class LiaisonAgent(PlannerAgent):
 
     def __repr__(self) -> str:
         return "LiaisonAgent()"
+
+    async def run(self, context) -> Any:
+        """Draft messages adapted to signals from other agents."""
+        goal = context.goal
+        deadline_at_risk = context.get_signal("deadline_at_risk", False)
+
+        if deadline_at_risk:
+            return await self.draft_message(
+                goal,
+                message_type="help_request",
+                tone="professional",
+                context={"deadline_at_risk": True},
+            )
+        return None
+
+    def can_contribute(self, context) -> bool:
+        """Only contribute when there's a deadline risk or explicit need."""
+        return context.get_signal("deadline_at_risk", False)
 
     @trace_agent_operation("liaison", "draft_message")
     @with_retry(

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proximal"
-version = "0.2.0"
+version = "0.4.0"
 requires-python = ">=3.12"
 description = "Multi-agent framework for neurodiverse executive functioning support"
 readme = "README.md"
@@ -28,6 +28,21 @@ server = [
 ]
 mcp = [
   "mcp>=1.0",
+]
+voice = [
+  "openai-whisper>=20231117",
+  "soundfile>=0.12",
+]
+voice-diarization = [
+  "pyannote.audio>=3.1",
+  "torch>=2.0",
+]
+analytics = [
+  "matplotlib>=3.8",
+]
+calendar = [
+  "google-auth>=2.0",
+  "google-api-python-client>=2.0",
 ]
 dev = [
   "pytest>=8.2",

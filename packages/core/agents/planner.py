@@ -9,6 +9,7 @@ from .. import memory
 from ..providers.router import chat as chat_model
 from ..session import session_manager
 from .registry import register_agent
+from .base import BaseAgent
 
 
 class DateEncoder(json.JSONEncoder):
@@ -30,14 +31,27 @@ def _json(obj) -> str:
 
 
 @register_agent("planner")
-class PlannerAgent:
+class PlannerAgent(BaseAgent):
     """Orchestrator that clarifies, plans, prioritizes, estimates, and packages tasks into sprints."""
+
+    name = "planner"
 
     def __init__(self) -> None:
         pass
 
     def __repr__(self) -> str:
         return "PlannerAgent()"
+
+    async def run(self, context) -> any:
+        """Run the planner pipeline within a shared context."""
+        goal = context.goal
+        result = await self.plan_llm({"goal": goal})
+        tasks = result.get("tasks", [])
+        context.tasks = [t.model_dump() for t in tasks]
+        return context.tasks
+
+    def can_contribute(self, context) -> bool:
+        return True
 
     async def clarify_llm(self, state: dict) -> dict:
         """Check if clarification is needed and generate questions"""

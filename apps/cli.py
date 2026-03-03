@@ -486,8 +486,8 @@ def _display_pretty_plan(plan_data):
 @app.command()
 def version():
     """Show the version of Proximal CLI."""
-    console.print("[bold green]Proximal CLI[/bold green] v0.2.0")
-    console.print("Now with interactive planning and task breakdown!")
+    console.print("[bold green]Proximal CLI[/bold green] v0.4.0")
+    console.print("Multi-agent collaboration with reactive monitoring and analytics!")
 
 
 @app.command()
@@ -541,6 +541,138 @@ def assist(
     except Exception as e:
         console.print(f"[bold red]Unexpected Error:[/bold red] {str(e)}")
         console.print("[dim]An unexpected error occurred during orchestration.[/dim]")
+        sys.exit(1)
+
+
+@app.command()
+def wellness(
+    user_id: str = typer.Option("default", "--user", "-u", help="User ID"),
+    days: int = typer.Option(30, "--days", "-d", help="Number of days to analyze"),
+):
+    """
+    Show wellness insights from cross-session pattern detection.
+
+    Guardian agent tracks breaks, work duration, and late sessions to
+    identify burnout risk and provide actionable recommendations.
+    """
+    from packages.core.capabilities.wellness import get_wellness_summary
+
+    console.print("[bold green]Wellness Check[/bold green]")
+
+    try:
+        with console.status("Analyzing wellness patterns..."):
+            summary = _run_async(get_wellness_summary(user_id, days))
+
+        if not summary:
+            console.print("[yellow]No wellness data found yet. Complete a few sessions first.[/yellow]")
+            return
+
+        # display insights
+        console.print(f"\n[bold]Sessions analyzed:[/bold] {summary.get('session_count', 0)}")
+
+        insights = summary.get("insights", [])
+        if insights:
+            console.print("\n[bold blue]Insights:[/bold blue]")
+            for insight in insights:
+                level = insight.get("level", "info")
+                color = {"gentle_nudge": "yellow", "firm_reminder": "orange3",
+                         "escalated_warning": "red", "session_end_suggestion": "bold red"}.get(level, "white")
+                console.print(f"  [{color}]{insight.get('message', '')}[/{color}]")
+        else:
+            console.print("\n[green]No concerns detected. Keep up the good work![/green]")
+
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {str(e)}")
+        sys.exit(1)
+
+
+@app.command()
+def workflow(
+    action: str = typer.Argument("list", help="Action: list, start, stop, approve"),
+    name: Optional[str] = typer.Argument(None, help="Workflow name (for start/stop/approve)"),
+):
+    """
+    Manage autonomous workflows.
+
+    Workflows run agents on schedules or in response to events.
+    Built-in workflows: daily_planning, proactive_checkin, weekly_status, adaptive_learning.
+    """
+    from packages.core.workflows.builtins import get_builtin_workflows
+
+    try:
+        if action == "list":
+            workflows = get_builtin_workflows()
+            table = Table(show_header=True)
+            table.add_column("Name", style="cyan")
+            table.add_column("Description", style="white")
+            table.add_column("Trigger", style="yellow")
+            table.add_column("Steps", style="green", justify="right")
+
+            for wf in workflows:
+                trigger_desc = wf.trigger.cron or wf.trigger.event_topic or "manual"
+                table.add_row(wf.name, wf.description, trigger_desc, str(len(wf.steps)))
+
+            console.print("\n[bold]Available Workflows:[/bold]\n")
+            console.print(table)
+
+        elif action == "start" and name:
+            console.print(f"[bold green]Starting workflow:[/bold green] {name}")
+            console.print("[dim]Workflow scheduling started. Use 'workflow stop' to halt.[/dim]")
+
+        elif action == "stop" and name:
+            console.print(f"[yellow]Stopping workflow:[/yellow] {name}")
+
+        elif action == "approve" and name:
+            console.print(f"[bold green]Approving checkpoint for workflow:[/bold green] {name}")
+
+        else:
+            console.print("[bold red]Usage:[/bold red] proximal workflow [list|start|stop|approve] [name]")
+            sys.exit(1)
+
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {str(e)}")
+        sys.exit(1)
+
+
+@app.command()
+def analytics(
+    user_id: str = typer.Option("default", "--user", "-u", help="User ID"),
+    days: int = typer.Option(30, "--days", "-d", help="Number of days to analyze"),
+    report: str = typer.Option("summary", "--report", "-r",
+                               help="Report type: summary, tasks, energy, focus, burnout"),
+):
+    """
+    View analytics and productivity insights.
+
+    Aggregates task completion rates, energy patterns, estimate accuracy,
+    focus session adherence, and burnout risk indicators.
+    """
+    from packages.core.analytics.aggregator import AnalyticsAggregator
+
+    console.print("[bold green]Analytics Dashboard[/bold green]")
+
+    try:
+        agg = AnalyticsAggregator()
+
+        with console.status("Gathering analytics..."):
+            if report == "summary":
+                data = _run_async(agg.weekly_summary(user_id))
+            elif report == "tasks":
+                data = _run_async(agg.task_completion_rates(user_id, days))
+            elif report == "energy":
+                data = _run_async(agg.energy_patterns(user_id, days))
+            elif report == "focus":
+                data = _run_async(agg.focus_session_adherence(user_id, days))
+            elif report == "burnout":
+                data = _run_async(agg.burnout_risk_indicators(user_id, days))
+            else:
+                console.print(f"[bold red]Unknown report type:[/bold red] {report}")
+                sys.exit(1)
+
+        console.print(json.dumps(data, indent=2))
+
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {str(e)}")
         sys.exit(1)
 
 

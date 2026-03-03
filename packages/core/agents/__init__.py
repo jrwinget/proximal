@@ -1,5 +1,6 @@
 from __future__ import annotations
 from .registry import AGENT_REGISTRY as AGENT_REGISTRY, register_agent as register_agent
+from .base import BaseAgent as BaseAgent
 
 # ensure built-in agents are registered on import
 from .planner import PlannerAgent as PlannerAgent

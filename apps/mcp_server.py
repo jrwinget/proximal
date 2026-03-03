@@ -442,6 +442,95 @@ def _create_mcp_server() -> Any:
         """
         return await handle_get_motivation(context, energy=energy)
 
+    @server.tool()
+    async def check_wellness(
+        user_id: str = "default",
+        days: int = 30,
+    ) -> str:
+        """Check wellness patterns and burnout risk indicators.
+
+        Parameters
+        ----------
+        user_id : str
+            User to check wellness for.
+        days : int
+            Number of days of history to analyze.
+
+        Returns
+        -------
+        str
+            JSON with wellness insights and recommendations.
+        """
+        try:
+            from packages.core.capabilities.wellness import get_wellness_summary
+
+            summary = await get_wellness_summary(user_id, days)
+            return json.dumps(summary or {"status": "no_data", "message": "No wellness data yet."})
+        except Exception as exc:
+            logger.error("check_wellness failed: %s", exc, exc_info=True)
+            return json.dumps({"error": f"Wellness check failed: {exc}"})
+
+    @server.tool()
+    async def check_schedule_conflicts(
+        tasks_json: str = "[]",
+    ) -> str:
+        """Check a set of tasks for scheduling conflicts with calendar.
+
+        Parameters
+        ----------
+        tasks_json : str
+            JSON string of task list to check.
+
+        Returns
+        -------
+        str
+            JSON with any detected conflicts.
+        """
+        try:
+            from packages.core.capabilities.productivity import check_schedule_conflicts as _check
+
+            tasks = json.loads(tasks_json)
+            result = await _check(tasks)
+            return json.dumps(result)
+        except Exception as exc:
+            logger.error("check_schedule_conflicts failed: %s", exc, exc_info=True)
+            return json.dumps({"error": f"Schedule conflict check failed: {exc}"})
+
+    @server.tool()
+    async def plan_from_voice(
+        audio_path: str,
+        energy: str = "medium",
+    ) -> str:
+        """Transcribe an audio file and create a plan from it.
+
+        Parameters
+        ----------
+        audio_path : str
+            Path to the audio file to transcribe.
+        energy : str
+            Current energy level: low, medium, or high.
+
+        Returns
+        -------
+        str
+            JSON with transcription and plan.
+        """
+        try:
+            from packages.core.capabilities.voice import transcribe_audio, extract_goals_from_transcript
+
+            transcript = transcribe_audio(audio_path)
+            goals = extract_goals_from_transcript(transcript)
+            goal_text = "; ".join(goals) if goals else transcript
+
+            plan_result = await handle_plan_goal(goal_text, energy=energy)
+            result = {"transcript": transcript, "extracted_goals": goals, "plan": json.loads(plan_result)}
+            return json.dumps(result)
+        except ImportError as exc:
+            return json.dumps({"error": str(exc)})
+        except Exception as exc:
+            logger.error("plan_from_voice failed: %s", exc, exc_info=True)
+            return json.dumps({"error": f"Voice planning failed: {exc}"})
+
     return server
 
 

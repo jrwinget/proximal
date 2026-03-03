@@ -48,6 +48,22 @@ class Settings(BaseSettings):
     # logging configuration
     log_level: str = "INFO"
 
+    # calendar provider
+    calendar_provider: str = "stub"
+
+    # notification settings
+    slack_webhook_url: str | None = None
+    discord_webhook_url: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    notification_email_to: str | None = None
+
+    # voice backend
+    voice_backend: str = "local"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
