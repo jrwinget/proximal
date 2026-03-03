@@ -1,15 +1,16 @@
 """Tests for CLI commands, including direct (no-server) mode."""
 
-import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 import sys
 from pathlib import Path
-from typer.testing import CliRunner
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from apps.cli import app
+import pytest  # noqa: E402
+from unittest.mock import patch, MagicMock, AsyncMock  # noqa: E402
+from typer.testing import CliRunner  # noqa: E402
+
+from apps.cli import app  # noqa: E402
 
 
 @pytest.fixture

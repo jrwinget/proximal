@@ -235,7 +235,7 @@ class TestConversationFlow:
         )
 
         # call function
-        result = await plan_llm({"goal": "Build an iOS app"})
+        await plan_llm({"goal": "Build an iOS app"})
 
         # verify the prompt included context
         call_args = mock_chat.call_args

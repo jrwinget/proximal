@@ -844,7 +844,7 @@ async def test_memory_persistence(
     mock_chat.return_value = sample_status_update_response
 
     # Act
-    result = await liaison_agent.draft_message(
+    await liaison_agent.draft_message(
         goal="Build mobile app",
         message_type="status_update"
     )
