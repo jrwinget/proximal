@@ -250,9 +250,9 @@ authentication, session management, and logging.
 
 **Next**
 
-- [ ] Full calendar API integration (Google / Outlook) — `CalendarProvider`
-      abstraction and conflict detection wired in; concrete Google/Outlook
-      implementations pending
+- [x] Full calendar API integration (Google / Outlook) — `CalendarProvider`
+      abstraction with conflict detection, Google (service account) and Outlook
+      (Microsoft Graph) providers via optional `[calendar]` extra
 - [ ] Mobile companion app
 - [ ] Speaker diarization for multi-person planning sessions
 - [ ] Frontend dashboard for analytics
