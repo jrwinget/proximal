@@ -108,3 +108,21 @@ class TestFactory:
     def test_google_provider(self):
         p = get_calendar_provider("google")
         assert isinstance(p, GoogleCalendarProvider)
+
+
+class TestLegacyCalendarRemoved:
+    """Ensure the legacy calendar.py placeholder is gone."""
+
+    def test_legacy_calendar_module_does_not_exist(self):
+        # the old placeholder file should not be on disk
+        from pathlib import Path
+
+        legacy = Path(__file__).resolve().parent.parent / "packages" / "core" / "integrations" / "calendar.py"
+        assert not legacy.exists(), "legacy calendar.py should be removed"
+
+    def test_calendar_provider_is_canonical(self):
+        # calendar_provider module should be importable as the canonical calendar integration
+        from packages.core.integrations.calendar_provider import CalendarProvider, get_calendar_provider
+
+        assert CalendarProvider is not None
+        assert callable(get_calendar_provider)
