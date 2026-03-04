@@ -63,29 +63,13 @@ class ResearcherAgent(BaseAgent):
         return context.get_signal("needs_research", False)
 ```
 
-## Provider Plugins
+## LLM Providers
 
-Register a new LLM provider:
+Proximal routes all LLM calls through
+[litellm](https://docs.litellm.ai/docs/), which already supports 100+ backends.
+To use a different model or provider, configure `PROVIDER_NAME` and `MODEL_NAME`
+in your `.env` file — no custom code is needed.
 
-```python
-from packages.core.providers.router import register_provider
-from packages.core.providers.base import BaseProvider
-
-@register_provider("myprov")
-class MyProvider(BaseProvider):
-    async def chat_complete(self, messages: list[dict], **kw) -> str:
-        ...
-```
-
-Add the module path to your package's `pyproject.toml`:
-
-```toml
-[project.entry-points."proximal.plugins"]
-myprov = "my_pkg.provider"
-```
-
-On import, Proximal will load entry points and register the classes.
-
-> **Note**: With litellm backing the provider layer, you may not need a custom
-> provider at all -- litellm already supports 100+ LLM backends. Use a custom
-> provider only when litellm does not cover your use case.
+If a `proximal.plugins` entry point imports a module that calls
+`register_capability` or `register_agent`, those registrations happen
+automatically on startup.

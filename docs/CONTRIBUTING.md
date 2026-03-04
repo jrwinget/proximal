@@ -118,7 +118,6 @@ ruff check . --fix    # auto-fix what can be fixed
 Example test structure:
 
 ```python
-@pytest.mark.asyncio
 async def test_guardian_sets_overwhelm_signal(self):
     """Guardian should detect overwhelm when tasks exceed threshold."""
     agent = GuardianAgent()
@@ -155,7 +154,7 @@ proximal/
 │   ├── analytics/           # Task completion, focus, burnout tracking
 │   ├── capabilities/        # Registered capabilities (productivity, wellness, voice, etc.)
 │   ├── collaboration/       # SharedContext + CollaborationMessage
-│   ├── integrations/        # Calendar, email, Automatisch
+│   ├── integrations/        # CalendarProvider, email, Automatisch
 │   ├── notifications/       # Slack, Discord, email notifiers
 │   ├── providers/           # LLM providers (litellm-backed)
 │   ├── workflows/           # Autonomous workflow definitions + scheduler
@@ -167,7 +166,7 @@ proximal/
 │   ├── settings.py          # Configuration via pydantic-settings
 │   ├── fault_tolerance.py   # Circuit breaker, retries, timeouts
 │   └── observability.py     # Logging and tracing
-├── tests/                   # 495 tests (see tests/README.md)
+├── tests/                   # ~500 tests (see tests/README.md)
 └── docs/                    # Documentation
 ```
 

@@ -68,15 +68,15 @@ productivity gurus think it should.
 orchestration pipeline. Each agent handles one thing well, so you're not
 overwhelmed by a single "do everything" AI:
 
-| Agent          | What They Do For You                                                                                            |
-| -------------- | --------------------------------------------------------------------------------------------------------------- |
-| **Planner**    | Breaks down overwhelming projects into manageable pieces                                                        |
-| **Chronos**    | Schedules tasks realistically, detects calendar conflicts, and learns from your time estimates                  |
-| **Guardian**   | Monitors your wellness across sessions -- tracks breaks, detects burnout risk, and nudges you to rest           |
-| **Mentor**     | Provides encouragement adapted to how you're feeling (gentle when overwhelmed, energetic when you're on a roll) |
-| **Scribe**     | Remembers important details so your working memory doesn't have to                                              |
-| **Liaison**    | Helps draft emails and messages when words are hard -- activates automatically when deadlines are at risk       |
-| **FocusBuddy** | Creates focused work sessions adapted to your energy level (15-50 min)                                          |
+| Agent          | What They Do For You                                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Planner**    | Breaks down overwhelming projects into manageable pieces                                                                                |
+| **Chronos**    | Schedules tasks realistically, checks your calendar for conflicts via a pluggable CalendarProvider, and learns from your time estimates |
+| **Guardian**   | Monitors your wellness across sessions -- tracks breaks, detects burnout risk, and nudges you to rest                                   |
+| **Mentor**     | Provides encouragement adapted to how you're feeling (gentle when overwhelmed, energetic when you're on a roll)                         |
+| **Scribe**     | Remembers important details so your working memory doesn't have to                                                                      |
+| **Liaison**    | Helps draft emails and messages when words are hard -- activates automatically when deadlines are at risk                               |
+| **FocusBuddy** | Creates focused work sessions adapted to your energy level (15-50 min)                                                                  |
 
 Agents communicate through a shared context with signals (e.g. Guardian detects
 overwhelm, Mentor adapts its tone, FocusBuddy shortens sessions). Capabilities
@@ -128,11 +128,11 @@ cp .env.example .env
 # simple planning
 proximal plan "Redesign my personal website"
 
-# plan with energy awareness
-proximal plan "Redesign my personal website" --energy low
-
 # interactive mode (asks clarifying questions)
 proximal plan "Build a mobile app" --interactive
+
+# plan with energy awareness
+proximal plan "Redesign my personal website" --energy low
 
 # break tasks into smaller pieces
 proximal breakdown "Implement user authentication" --hours 8
@@ -157,7 +157,7 @@ Want to integrate `proximal` into your own app? Run it as an API server:
 
 ```bash
 pip install -e ".[server]"
-proximal server
+python -c "from apps.server.main import start; start()"
 # Runs on http://localhost:7315
 ```
 
@@ -250,7 +250,9 @@ authentication, session management, and logging.
 
 **Next**
 
-- [ ] Full calendar API integration (Google / Outlook)
+- [ ] Full calendar API integration (Google / Outlook) — `CalendarProvider`
+      abstraction and conflict detection wired in; concrete Google/Outlook
+      implementations pending
 - [ ] Mobile companion app
 - [ ] Speaker diarization for multi-person planning sessions
 - [ ] Frontend dashboard for analytics
