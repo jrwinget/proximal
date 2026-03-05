@@ -149,6 +149,3 @@ temp/
 *.temp
 *.old
 *.orig
-
-.claude/
-CLAUDE.md
