@@ -98,6 +98,9 @@ def plan(
     server: bool = typer.Option(
         False, "--server", help="Use API server instead of calling pipeline directly"
     ),
+    energy: Optional[str] = typer.Option(
+        None, "--energy", "-e", help="Energy level: low, medium, or high"
+    ),
 ):
     """
     Transform a goal or idea into a structured project plan with tasks and sprints.
@@ -106,21 +109,37 @@ def plan(
     Use --server to route through the API server instead.
     Use --interactive for a conversational planning experience where PlannerAgent
     asks clarifying questions to create a more detailed and personalized plan.
+    Use --energy to adapt plan complexity to your current energy level.
     """
-    console.print(
-        f"[bold green]{'Interactive ' if interactive else ''}Planning:[/bold green] {goal}"
-    )
+    # parse energy level if provided
+    from packages.core.cli_helpers import parse_energy_flag
+
+    energy_level = parse_energy_flag(energy) if energy else None
+    energy_str = energy_level.value if energy_level else "medium"
+
+    if energy_level:
+        console.print(
+            f"[bold green]{'Interactive ' if interactive else ''}Planning:[/bold green] {goal} "
+            f"[dim](energy: {energy_str})[/dim]"
+        )
+    else:
+        console.print(
+            f"[bold green]{'Interactive ' if interactive else ''}Planning:[/bold green] {goal}"
+        )
 
     try:
         if server:
             # server mode: use HTTP calls
+            payload = {"message": goal}
+            if energy_level:
+                payload["energy"] = energy_str
             if interactive:
                 plan_data = _interactive_planning_server(goal)
             else:
                 with console.status("Generating plan..."):
                     response = httpx.post(
                         f"{API_URL}/plan",
-                        json={"message": goal},
+                        json=payload,
                         headers=_get_headers(),
                         timeout=60.0,
                     )
@@ -133,7 +152,7 @@ def plan(
             else:
                 with console.status("Generating plan..."):
                     pipeline = _get_direct_pipeline()
-                    result = _run_async(pipeline(goal))
+                    result = _run_async(pipeline(goal, energy=energy_str))
                     plan_data = _serialize_plan(result.get("sprints", []))
 
         if output:

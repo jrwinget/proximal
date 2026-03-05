@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     # calendar provider
     calendar_provider: str = "stub"
 
+    # google calendar (service account credentials)
+    google_calendar_id: str = "primary"
+    google_service_account_json: str | None = None
+
+    # outlook calendar (azure ad app credentials)
+    outlook_client_id: str | None = None
+    outlook_client_secret: str | None = None
+    outlook_tenant_id: str | None = None
+    outlook_user_id: str | None = None
+
     # notification settings
     slack_webhook_url: str | None = None
     discord_webhook_url: str | None = None
