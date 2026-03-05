@@ -109,8 +109,9 @@ async def check_schedule_conflicts(
     list[dict[str, Any]]
         List of detected conflict dicts (empty if no conflicts).
     """
-    from ..integrations.calendar_provider import get_calendar_provider
     from datetime import datetime, timedelta
+
+    from ..integrations.calendar_provider import get_calendar_provider
 
     provider = get_calendar_provider(provider_name)
 
@@ -137,12 +138,14 @@ async def check_schedule_conflicts(
             evt_start_str = evt.start.strftime("%H:%M")
             evt_end_str = evt.end.strftime("%H:%M")
             if task_start < evt_end_str and task_end > evt_start_str:
-                conflicts.append({
-                    "task": task_title,
-                    "task_time": f"{task_start}-{task_end}",
-                    "conflict_with": evt.title,
-                    "event_time": f"{evt_start_str}-{evt_end_str}",
-                })
+                conflicts.append(
+                    {
+                        "task": task_title,
+                        "task_time": f"{task_start}-{task_end}",
+                        "conflict_with": evt.title,
+                        "event_time": f"{evt_start_str}-{evt_end_str}",
+                    }
+                )
 
     return conflicts
 

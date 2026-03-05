@@ -1,15 +1,17 @@
 from __future__ import annotations
-from typing import List, Dict
+
 import json
 from datetime import date
+from typing import Dict, List
+
 from pydantic import BaseModel
 
-from ..models import Task, Sprint
 from .. import memory
+from ..models import Sprint, Task
 from ..providers.router import chat as chat_model
 from ..session import session_manager
-from .registry import register_agent
 from .base import BaseAgent
+from .registry import register_agent
 
 
 class DateEncoder(json.JSONEncoder):
@@ -51,10 +53,12 @@ class PlannerAgent(BaseAgent):
         decision_fatigue = getattr(profile, "decision_fatigue", "moderate")
         overwhelm_threshold = getattr(profile, "overwhelm_threshold", 5)
 
-        result = await self.plan_llm({
-            "goal": goal,
-            "decision_fatigue": decision_fatigue,
-        })
+        result = await self.plan_llm(
+            {
+                "goal": goal,
+                "decision_fatigue": decision_fatigue,
+            }
+        )
         tasks = result.get("tasks", [])
 
         # cap tasks when decision fatigue is high to reduce choice paralysis
@@ -209,8 +213,7 @@ class PlannerAgent(BaseAgent):
             )
         elif decision_fatigue == "moderate":
             fatigue_context = (
-                "The user has moderate decision fatigue. "
-                "Keep options manageable.\n"
+                "The user has moderate decision fatigue. Keep options manageable.\n"
             )
 
         prompt = (

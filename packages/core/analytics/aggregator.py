@@ -8,7 +8,7 @@ for transparent database creation on first use.
 from __future__ import annotations
 
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import aiosqlite

@@ -10,7 +10,6 @@ from packages.core.agents.mentor import MentorAgent
 from packages.core.collaboration.context import SharedContext
 from packages.core.models import UserProfile
 
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------

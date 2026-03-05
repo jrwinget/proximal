@@ -68,15 +68,15 @@ productivity gurus think it should.
 orchestration pipeline. Each agent handles one thing well, so you're not
 overwhelmed by a single "do everything" AI:
 
-| Agent          | What They Do For You                                                                                                                                           |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Planner**    | Breaks down overwhelming projects into manageable pieces. Limits choices when decision fatigue is high.                                                         |
-| **Chronos**    | Schedules tasks during your peak hours, buffers time estimates for time blindness, checks calendar conflicts, and learns from your estimates.                   |
-| **Guardian**   | Monitors your wellness proactively -- activates low-energy mode on your tough days, tracks breaks, detects burnout, and watches for overwork under deadlines.  |
-| **Mentor**     | Adapts encouragement to your preferred tone, celebration style, and verbosity. Gets gentler on hard days and supportive when deadlines press.                  |
-| **Scribe**     | Remembers important details so your working memory doesn't have to.                                                                                            |
-| **Liaison**    | Helps draft emails and messages when words are hard -- activates automatically when deadlines are at risk.                                                     |
-| **FocusBuddy** | Creates focus sessions matched to your preferred duration and focus style (hyperfocus, variable, short-burst). Shortens sessions and adds breaks on low days.  |
+| Agent          | What They Do For You                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Planner**    | Breaks down overwhelming projects into manageable pieces. Limits choices when decision fatigue is high.                                                       |
+| **Chronos**    | Schedules tasks during your peak hours, buffers time estimates for time blindness, checks calendar conflicts, and learns from your estimates.                 |
+| **Guardian**   | Monitors your wellness proactively -- activates low-energy mode on your tough days, tracks breaks, detects burnout, and watches for overwork under deadlines. |
+| **Mentor**     | Adapts encouragement to your preferred tone, celebration style, and verbosity. Gets gentler on hard days and supportive when deadlines press.                 |
+| **Scribe**     | Remembers important details so your working memory doesn't have to.                                                                                           |
+| **Liaison**    | Helps draft emails and messages when words are hard -- activates automatically when deadlines are at risk.                                                    |
+| **FocusBuddy** | Creates focus sessions matched to your preferred duration and focus style (hyperfocus, variable, short-burst). Shortens sessions and adds breaks on low days. |
 
 Every agent reads your `UserProfile` to personalize its behavior -- your peak
 hours, focus style, time blindness, decision fatigue, low-energy days, tone,

@@ -1,16 +1,17 @@
-import pytest
-from unittest.mock import AsyncMock, patch
 import asyncio
+from unittest.mock import AsyncMock, patch
 
-from packages.core.orchestrator import Orchestrator
+import pytest
+
 from packages.core.agents import plan_llm
-from packages.core.models import Task, Sprint
-from packages.core.observability import get_observability_logger
 from packages.core.fault_tolerance import CircuitBreaker, with_retry, with_timeout
+from packages.core.models import Sprint, Task
+from packages.core.observability import get_observability_logger
+from packages.core.orchestrator import Orchestrator
 from packages.core.providers.exceptions import (
+    AgentTimeoutError,
     ProviderError,
     ProviderRateLimitError,
-    AgentTimeoutError
 )
 
 
@@ -24,7 +25,7 @@ def sample_tasks():
             detail="Install dependencies and configure",
             priority="P0",
             estimate_h=2,
-            done=False
+            done=False,
         ),
         Task(
             id="task2",
@@ -32,8 +33,8 @@ def sample_tasks():
             detail="Build the core functionality",
             priority="P1",
             estimate_h=8,
-            done=False
-        )
+            done=False,
+        ),
     ]
 
 
@@ -44,9 +45,16 @@ def sample_sprints():
         Sprint(
             sprint_num=1,
             tasks=[
-                Task(id="task1", title="Task 1", detail="Detail 1", priority="P0", estimate_h=2, done=False)
+                Task(
+                    id="task1",
+                    title="Task 1",
+                    detail="Detail 1",
+                    priority="P0",
+                    estimate_h=2,
+                    done=False,
+                )
             ],
-            duration_weeks=2
+            duration_weeks=2,
         )
     ]
 
@@ -75,7 +83,9 @@ class TestIndividualAgents:
     async def test_planner_agent_error_handling(self, mock_chat):
         """Test planner handles LLM errors gracefully."""
         # mock llm error
-        mock_chat.side_effect = ProviderError("API error", retriable=True, provider="test")
+        mock_chat.side_effect = ProviderError(
+            "API error", retriable=True, provider="test"
+        )
 
         # should propagate error
         with pytest.raises(ProviderError):
@@ -162,6 +172,7 @@ class TestFaultTolerance:
 
         # Circuit should now be OPEN
         from packages.core.fault_tolerance import CircuitState
+
         assert circuit.stats.state == CircuitState.OPEN
 
         # Further calls should fail fast
@@ -206,13 +217,16 @@ class TestFaultTolerance:
     @pytest.mark.asyncio
     async def test_timeout_enforcement(self):
         """Test that timeouts are properly enforced."""
+
         async def slow_operation():
             await asyncio.sleep(5.0)
             return "completed"
 
         # Should timeout after 0.1 seconds
         with pytest.raises(AgentTimeoutError, match="timed out"):
-            await with_timeout(slow_operation(), timeout_seconds=0.1, operation_name="slow_op")
+            await with_timeout(
+                slow_operation(), timeout_seconds=0.1, operation_name="slow_op"
+            )
 
     @pytest.mark.asyncio
     async def test_rate_limit_handling(self):
@@ -290,8 +304,8 @@ class TestSessionStateManagement:
     @pytest.mark.asyncio
     async def test_session_isolation_between_workflows(self):
         """Test that different sessions don't interfere with each other."""
-        from packages.core.session import session_manager
         from packages.core.models import MessageRole
+        from packages.core.session import session_manager
 
         # Create two separate sessions
         session1 = session_manager.create_session("user_goal_1")
@@ -300,7 +314,9 @@ class TestSessionStateManagement:
         assert session1.session_id != session2.session_id
 
         # Modify session1 via update_session API
-        session_manager.update_session(session1.session_id, MessageRole.user, "Test message")
+        session_manager.update_session(
+            session1.session_id, MessageRole.user, "Test message"
+        )
 
         # Retrieve session2 - should not be affected
         retrieved_session2 = session_manager.get_session(session2.session_id)
@@ -310,9 +326,10 @@ class TestSessionStateManagement:
     @pytest.mark.asyncio
     async def test_session_expiry_handling(self):
         """Test that expired sessions are handled properly."""
-        from packages.core.session import session_manager
-        from packages.core.models import MessageRole
         from datetime import datetime, timedelta, timezone
+
+        from packages.core.models import MessageRole
+        from packages.core.session import session_manager
 
         # Create session and add a message so it is saved to the store
         session = session_manager.create_session("test_goal")

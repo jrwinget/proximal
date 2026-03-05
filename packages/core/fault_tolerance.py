@@ -1,16 +1,17 @@
 from __future__ import annotations
+
 import asyncio
-import time
 import logging
-from enum import Enum
-from typing import Callable, Optional, TypeVar
+import time
 from dataclasses import dataclass, field
+from enum import Enum
 from functools import wraps
+from typing import Callable, Optional, TypeVar
 
 from .providers.exceptions import (
+    AgentTimeoutError,
     ProviderError,
     ProviderRateLimitError,
-    AgentTimeoutError,
 )
 
 logger = logging.getLogger(__name__)

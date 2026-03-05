@@ -11,13 +11,15 @@ def _mock_tasks_response(n=6):
     tasks = []
     priorities = ["P0", "P1", "P2", "P3"]
     for i in range(n):
-        tasks.append({
-            "id": str(i),
-            "title": f"Task {i}",
-            "detail": f"Detail for task {i}",
-            "priority": priorities[i % 4],
-            "estimate_h": 2,
-        })
+        tasks.append(
+            {
+                "id": str(i),
+                "title": f"Task {i}",
+                "detail": f"Detail for task {i}",
+                "priority": priorities[i % 4],
+                "estimate_h": 2,
+            }
+        )
     return json.dumps(tasks)
 
 

@@ -1,14 +1,14 @@
 from __future__ import annotations
+
 import asyncio
 import logging
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List
 
-from .agents import plan_llm
-from .agents import AGENT_REGISTRY
+from .agents import AGENT_REGISTRY, plan_llm
 from .capabilities import CAPABILITY_REGISTRY
 from .events import Event, Topics, get_event_bus
-from .observability import get_observability_logger, trace_operation
 from .fault_tolerance import with_timeout
+from .observability import get_observability_logger, trace_operation
 from .providers.exceptions import AgentError
 
 if TYPE_CHECKING:
@@ -117,11 +117,13 @@ class Orchestrator:
                 # publish plan.created event
                 try:
                     bus = get_event_bus()
-                    await bus.publish(Event(
-                        topic=Topics.PLAN_CREATED,
-                        source="orchestrator",
-                        data={"goal": goal, "task_count": len(tasks)},
-                    ))
+                    await bus.publish(
+                        Event(
+                            topic=Topics.PLAN_CREATED,
+                            source="orchestrator",
+                            data={"goal": goal, "task_count": len(tasks)},
+                        )
+                    )
                 except Exception:
                     logger.debug("Failed to publish plan.created event", exc_info=True)
 
@@ -197,15 +199,17 @@ class Orchestrator:
             # publish plan.completed event
             try:
                 bus = get_event_bus()
-                await bus.publish(Event(
-                    topic=Topics.PLAN_COMPLETED,
-                    source="orchestrator",
-                    data={
-                        "goal": goal,
-                        "successful_agents": successful_agents,
-                        "failed_agents": failed_agents,
-                    },
-                ))
+                await bus.publish(
+                    Event(
+                        topic=Topics.PLAN_COMPLETED,
+                        source="orchestrator",
+                        data={
+                            "goal": goal,
+                            "successful_agents": successful_agents,
+                            "failed_agents": failed_agents,
+                        },
+                    )
+                )
             except Exception:
                 logger.debug("Failed to publish plan.completed event", exc_info=True)
 

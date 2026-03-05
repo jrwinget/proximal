@@ -353,15 +353,20 @@ class TestGoogleCalendarProvider:
         """Verify ValueError when no credentials are provided."""
         mock_sa, mock_build, _mock_service = _mock_google_modules()
 
-        with patch.dict("sys.modules", {
-            "google": MagicMock(),
-            "google.oauth2": MagicMock(),
-            "google.oauth2.service_account": mock_sa,
-            "googleapiclient": MagicMock(),
-            "googleapiclient.discovery": MagicMock(build=mock_build),
-            "googleapiclient.errors": MagicMock(),
-        }):
-            with pytest.raises(ValueError, match="service_account_path or service_account_info"):
+        with patch.dict(
+            "sys.modules",
+            {
+                "google": MagicMock(),
+                "google.oauth2": MagicMock(),
+                "google.oauth2.service_account": mock_sa,
+                "googleapiclient": MagicMock(),
+                "googleapiclient.discovery": MagicMock(build=mock_build),
+                "googleapiclient.errors": MagicMock(),
+            },
+        ):
+            with pytest.raises(
+                ValueError, match="service_account_path or service_account_info"
+            ):
                 GoogleCalendarProvider(calendar_id="test-cal")
 
 
@@ -439,7 +444,9 @@ class TestOutlookCalendarProvider:
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             events = await provider.get_events(
@@ -470,7 +477,9 @@ class TestOutlookCalendarProvider:
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.get.return_value = mock_response
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             events = await provider.get_events(
@@ -500,7 +509,9 @@ class TestOutlookCalendarProvider:
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post.return_value = mock_response
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await provider.create_event(event)
@@ -532,7 +543,9 @@ class TestOutlookCalendarProvider:
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.patch.return_value = mock_response
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await provider.update_event("evt-1", event)
@@ -552,7 +565,9 @@ class TestOutlookCalendarProvider:
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.delete.return_value = mock_response
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await provider.delete_event("evt-1")
@@ -574,7 +589,9 @@ class TestOutlookCalendarProvider:
         with patch("httpx.AsyncClient") as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.delete.return_value = mock_response
-            mock_client_cls.return_value.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client_cls.return_value.__aenter__ = AsyncMock(
+                return_value=mock_client
+            )
             mock_client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
 
             result = await provider.delete_event("nonexistent")
@@ -621,12 +638,21 @@ class TestLegacyCalendarRemoved:
         # the old placeholder file should not be on disk
         from pathlib import Path
 
-        legacy = Path(__file__).resolve().parent.parent / "packages" / "core" / "integrations" / "calendar.py"
+        legacy = (
+            Path(__file__).resolve().parent.parent
+            / "packages"
+            / "core"
+            / "integrations"
+            / "calendar.py"
+        )
         assert not legacy.exists(), "legacy calendar.py should be removed"
 
     def test_calendar_provider_is_canonical(self):
         # calendar_provider module should be importable as the canonical calendar integration
-        from packages.core.integrations.calendar_provider import CalendarProvider, get_calendar_provider
+        from packages.core.integrations.calendar_provider import (
+            CalendarProvider,
+            get_calendar_provider,
+        )
 
         assert CalendarProvider is not None
         assert callable(get_calendar_provider)

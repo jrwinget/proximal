@@ -11,14 +11,14 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from .base import BaseAgent
-from .registry import register_agent
 from ..events import Event, EventBus, Topics
 from ..models import (
     EscalationLevel,
     WellnessObservation,
     WellnessObservationType,
 )
+from .base import BaseAgent
+from .registry import register_agent
 
 logger = logging.getLogger(__name__)
 
@@ -170,7 +170,9 @@ class GuardianAgent(BaseAgent):
 
     @staticmethod
     def _is_low_energy_day(
-        profile, *, _now: datetime | None = None,
+        profile,
+        *,
+        _now: datetime | None = None,
     ) -> bool:
         """Check if the current day is in the user's low-energy days."""
         low_days = getattr(profile, "low_energy_days", [])
@@ -187,17 +189,18 @@ class GuardianAgent(BaseAgent):
             from ..events import Event, get_event_bus
 
             bus = get_event_bus()
-            await bus.publish(Event(
-                topic=Topics.GUARDIAN_NUDGE,
-                source="guardian",
-                data={
-                    "type": "low_energy_day",
-                    "message": (
-                        "It's a low-energy day — be gentle "
-                        "with yourself today."
-                    ),
-                },
-            ))
+            await bus.publish(
+                Event(
+                    topic=Topics.GUARDIAN_NUDGE,
+                    source="guardian",
+                    data={
+                        "type": "low_energy_day",
+                        "message": (
+                            "It's a low-energy day — be gentle with yourself today."
+                        ),
+                    },
+                )
+            )
         except Exception:
             logger.debug(
                 "Guardian: failed to emit low-energy nudge",
@@ -210,18 +213,20 @@ class GuardianAgent(BaseAgent):
             from ..events import Event, get_event_bus
 
             bus = get_event_bus()
-            await bus.publish(Event(
-                topic=Topics.GUARDIAN_NUDGE,
-                source="guardian",
-                data={
-                    "type": "deadline_pressure",
-                    "message": (
-                        "Deadline pressure detected — remember to "
-                        "take breaks. Pushing too hard leads to "
-                        "diminishing returns."
-                    ),
-                },
-            ))
+            await bus.publish(
+                Event(
+                    topic=Topics.GUARDIAN_NUDGE,
+                    source="guardian",
+                    data={
+                        "type": "deadline_pressure",
+                        "message": (
+                            "Deadline pressure detected — remember to "
+                            "take breaks. Pushing too hard leads to "
+                            "diminishing returns."
+                        ),
+                    },
+                )
+            )
         except Exception:
             logger.debug(
                 "Guardian: failed to emit deadline nudge",

@@ -6,8 +6,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
+
 import pytest  # noqa: E402
-from unittest.mock import patch, MagicMock, AsyncMock  # noqa: E402
 from typer.testing import CliRunner  # noqa: E402
 
 from apps.cli import app  # noqa: E402
@@ -95,7 +96,9 @@ def test_plan_command_server_mode(mock_post, runner, sample_plan_data):
     mock_response.raise_for_status.return_value = None
     mock_post.return_value = mock_response
 
-    result = runner.invoke(app, ["plan", "Create a todo app", "--server", "--no-pretty"])
+    result = runner.invoke(
+        app, ["plan", "Create a todo app", "--server", "--no-pretty"]
+    )
 
     assert result.exit_code == 0
     assert "Planning: Create a todo app" in result.stdout
@@ -145,7 +148,7 @@ def test_plan_command_with_output_file(mock_pipeline, runner, tmp_path):
 @patch("apps.cli.httpx.post")
 def test_plan_command_server_api_error(mock_post, runner):
     """Test plan command with --server when API returns error."""
-    from httpx import HTTPStatusError, Response, Request
+    from httpx import HTTPStatusError, Request, Response
 
     mock_response = Response(status_code=500, content=b"Internal Server Error")
     mock_response._request = Request(method="POST", url="http://localhost:7315/plan")
@@ -196,7 +199,9 @@ def test_plan_interactive_direct_mode_needs_clarification(mock_pipeline, runner)
 
     # this will fail because Prompt.ask is not mocked, but the pipeline call should happen
     # we test the non-interactive path separately
-    result = runner.invoke(app, ["plan", "Build an app", "--interactive", "--no-pretty"], input="iOS\n")
+    result = runner.invoke(
+        app, ["plan", "Build an app", "--interactive", "--no-pretty"], input="iOS\n"
+    )
 
     # the interactive flow should have started
     assert "Interactive Planning" in result.stdout

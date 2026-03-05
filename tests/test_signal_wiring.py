@@ -79,11 +79,14 @@ class TestLowEnergyModeChronos:
         schedule = await agent.run(ctx)
         # all tasks present plus any breaks
         task_entries = [
-            e for e in schedule
+            e
+            for e in schedule
             if not (
                 isinstance(e.get("task", {}), dict)
-                and e["task"].get("title", "").lower() in (
-                    "break", "transition time",
+                and e["task"].get("title", "").lower()
+                in (
+                    "break",
+                    "transition time",
                 )
             )
         ]

@@ -1,7 +1,8 @@
 """Tests for voice capabilities — transcription and goal extraction."""
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from packages.core.capabilities.voice import (
     extract_goals_from_transcript,

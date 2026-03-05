@@ -1,20 +1,21 @@
 """Tests for notification system (WP5)."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from packages.core.events import Event, EventBus, Topics
+from packages.core.notifications.discord import DiscordNotifier
+from packages.core.notifications.email_notifier import EmailNotifier
 from packages.core.notifications.registry import (
     NotificationPayload,
     NotificationProvider,
+    _providers,
     register_notification_provider,
     send_notification,
-    _providers,
 )
 from packages.core.notifications.slack import SlackNotifier
-from packages.core.notifications.discord import DiscordNotifier
-from packages.core.notifications.email_notifier import EmailNotifier
 from packages.core.notifications.subscribers import register_notification_subscriptions
-from packages.core.events import Event, EventBus, Topics
 
 
 @pytest.fixture(autouse=True)

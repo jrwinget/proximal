@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import model_validator, Field, AliasChoices
+
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 

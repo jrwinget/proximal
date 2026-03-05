@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .registry import register_capability
 from ..agents.liaison import LiaisonAgent
+from .registry import register_capability
 
 
 @register_capability(

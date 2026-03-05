@@ -1,13 +1,12 @@
 import pytest
 
-from packages.core.models import (
-    EnergyLevel,
-    EnergyConfig,
-    Task,
-    Priority,
-)
 from packages.core.energy import apply_energy_adjustments, get_energy_prompt_context
-
+from packages.core.models import (
+    EnergyConfig,
+    EnergyLevel,
+    Priority,
+    Task,
+)
 
 # ---------------------------------------------------------------------------
 # EnergyLevel enum
@@ -97,7 +96,12 @@ class TestEnergyConfig:
 
 def _make_tasks(specs: list[tuple[str, int, str]]) -> list[Task]:
     """Helper: create Task objects from (title, hours, priority) tuples."""
-    priority_map = {"P0": Priority.critical, "P1": Priority.high, "P2": Priority.medium, "P3": Priority.low}
+    priority_map = {
+        "P0": Priority.critical,
+        "P1": Priority.high,
+        "P2": Priority.medium,
+        "P3": Priority.low,
+    }
     return [
         Task(title=t, detail=f"Detail for {t}", priority=priority_map[p], estimate_h=h)
         for t, h, p in specs
@@ -119,13 +123,15 @@ class TestApplyEnergyAdjustments:
 
     def test_inserts_breaks(self):
         """Breaks should be inserted according to break_frequency."""
-        tasks = _make_tasks([
-            ("Task 1", 1, "P2"),
-            ("Task 2", 1, "P2"),
-            ("Task 3", 1, "P2"),
-            ("Task 4", 1, "P2"),
-            ("Task 5", 1, "P2"),
-        ])
+        tasks = _make_tasks(
+            [
+                ("Task 1", 1, "P2"),
+                ("Task 2", 1, "P2"),
+                ("Task 3", 1, "P2"),
+                ("Task 4", 1, "P2"),
+                ("Task 5", 1, "P2"),
+            ]
+        )
         cfg = EnergyConfig.for_level(EnergyLevel.low)  # break every 2 tasks
 
         result = apply_energy_adjustments(tasks, cfg)
@@ -134,11 +140,13 @@ class TestApplyEnergyAdjustments:
 
     def test_limits_daily_hours(self):
         """Total scheduled work should not exceed max_daily_hours."""
-        tasks = _make_tasks([
-            ("Task A", 3, "P2"),
-            ("Task B", 3, "P2"),
-            ("Task C", 3, "P2"),
-        ])
+        tasks = _make_tasks(
+            [
+                ("Task A", 3, "P2"),
+                ("Task B", 3, "P2"),
+                ("Task C", 3, "P2"),
+            ]
+        )
         cfg = EnergyConfig.for_level(EnergyLevel.low)  # max 2h per day
 
         result = apply_energy_adjustments(tasks, cfg)
@@ -148,11 +156,13 @@ class TestApplyEnergyAdjustments:
 
     def test_low_energy_reorders_by_difficulty(self):
         """Low energy should place simpler/lower-priority tasks first."""
-        tasks = _make_tasks([
-            ("Critical task", 1, "P0"),
-            ("Easy task", 1, "P3"),
-            ("Medium task", 1, "P2"),
-        ])
+        tasks = _make_tasks(
+            [
+                ("Critical task", 1, "P0"),
+                ("Easy task", 1, "P3"),
+                ("Medium task", 1, "P2"),
+            ]
+        )
         cfg = EnergyConfig.for_level(EnergyLevel.low)
 
         result = apply_energy_adjustments(tasks, cfg)
@@ -164,11 +174,13 @@ class TestApplyEnergyAdjustments:
 
     def test_high_energy_preserves_priority_order(self):
         """High energy should keep tasks in priority order (P0 first)."""
-        tasks = _make_tasks([
-            ("Easy task", 1, "P3"),
-            ("Critical task", 1, "P0"),
-            ("Medium task", 1, "P2"),
-        ])
+        tasks = _make_tasks(
+            [
+                ("Easy task", 1, "P3"),
+                ("Critical task", 1, "P0"),
+                ("Medium task", 1, "P2"),
+            ]
+        )
         cfg = EnergyConfig.for_level(EnergyLevel.high)
 
         result = apply_energy_adjustments(tasks, cfg)

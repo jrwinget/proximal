@@ -1,22 +1,23 @@
 from __future__ import annotations
-from typing import Dict, Any, Optional, Literal
+
 import json
 from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Any, Dict, Literal, Optional
 
+from .. import memory
+from ..fault_tolerance import with_retry, with_timeout
+from ..observability import get_observability_logger, trace_agent_operation
+from ..providers.exceptions import (
+    AgentValidationError,
+    EmptyResponseError,
+    ProviderError,
+)
+from ..providers.router import chat as chat_model
+from ..session import session_manager
+from ..settings import get_settings
 from .base import BaseAgent
 from .registry import register_agent
-from ..providers.router import chat as chat_model
-from ..providers.exceptions import (
-    ProviderError,
-    EmptyResponseError,
-    AgentValidationError,
-)
-from ..session import session_manager
-from .. import memory
-from ..observability import trace_agent_operation, get_observability_logger
-from ..fault_tolerance import with_retry, with_timeout
-from ..settings import get_settings
 
 
 class MessageType(StrEnum):

@@ -4,19 +4,22 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import pytest  # noqa: E402
-from unittest.mock import patch, MagicMock, AsyncMock  # noqa: E402
+from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
 
-fastapi = pytest.importorskip("fastapi", reason="fastapi not installed (requires .[server])")
+import pytest  # noqa: E402
+
+fastapi = pytest.importorskip(
+    "fastapi", reason="fastapi not installed (requires .[server])"
+)
 from fastapi.testclient import TestClient  # noqa: E402
 
 from apps.server.main import app  # noqa: E402
 from packages.core.models import (  # noqa: E402
     ConversationState,
+    MessageRole,
+    Priority,
     Sprint,
     Task,
-    Priority,
-    MessageRole,
 )
 
 

@@ -2,10 +2,10 @@
 
 from .definition import (
     CheckpointPolicy,
+    TriggerType,
     WorkflowDefinition,
     WorkflowStep,
     WorkflowTrigger,
-    TriggerType,
 )
 from .executor import WorkflowExecutor
 from .scheduler import WorkflowScheduler

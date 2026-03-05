@@ -32,19 +32,22 @@ class FocusBuddyAgent(BaseAgent):
         sessions = []
         for t in tasks:
             duration, break_after, check_in = self._apply_focus_style(
-                base, focus_style,
+                base,
+                focus_style,
             )
             # shorten sessions and force breaks in low-energy mode
             if low_energy:
                 duration = max(10, int(duration * 0.6))
                 break_after = True
-            sessions.append({
-                "task": t.get("title", ""),
-                "duration_min": duration,
-                "focus_style": focus_style,
-                "break_after": break_after,
-                "check_in": check_in,
-            })
+            sessions.append(
+                {
+                    "task": t.get("title", ""),
+                    "duration_min": duration,
+                    "focus_style": focus_style,
+                    "break_after": break_after,
+                    "check_in": check_in,
+                }
+            )
         return sessions
 
     # -- profile helpers -----------------------------------------------------
@@ -61,7 +64,8 @@ class FocusBuddyAgent(BaseAgent):
 
     @staticmethod
     def _apply_focus_style(
-        base: int, style: str,
+        base: int,
+        style: str,
     ) -> tuple[int, bool, bool]:
         """Return (duration, break_after, check_in) for the given style."""
         if style == "hyperfocus":

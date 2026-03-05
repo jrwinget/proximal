@@ -1,9 +1,9 @@
 """Tests for reactive Chronos agent (WP4)."""
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, patch
 
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from packages.core.agents.chronos import ChronosAgent
 from packages.core.events import Event, EventBus, Topics

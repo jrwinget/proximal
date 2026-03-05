@@ -98,10 +98,7 @@ class MentorAgent(BaseAgent):
                 f"Recommended: focus on the highest-priority item "
                 f"for '{goal}'."
             ),
-            "direct": (
-                f"Too many tasks. Pick one thing for '{goal}' "
-                f"and start there."
-            ),
+            "direct": (f"Too many tasks. Pick one thing for '{goal}' and start there."),
             "playful": (
                 f"Whoa, that's a lot on the plate! Let's just grab "
                 f"one bite-sized piece of '{goal}' for now."
@@ -146,12 +143,10 @@ class MentorAgent(BaseAgent):
                 f"related to '{goal}' and protect your capacity."
             ),
             "direct": (
-                f"Low energy day. Do one small thing for '{goal}' "
-                f"and call it a win."
+                f"Low energy day. Do one small thing for '{goal}' and call it a win."
             ),
             "playful": (
-                f"Cozy mode activated! A little nibble at '{goal}' "
-                f"is plenty for today."
+                f"Cozy mode activated! A little nibble at '{goal}' is plenty for today."
             ),
         }
         return messages.get(tone, messages["warm"])
@@ -199,14 +194,17 @@ class MentorAgent(BaseAgent):
                 f"Keep that momentum going!"
             ),
             "data-driven": (
-                f"Progress update: working on '{goal}'. "
-                f"Stay focused on the next step."
+                f"Progress update: working on '{goal}'. Stay focused on the next step."
             ),
         }
         return bases.get(style, bases["quiet"])
 
     def _apply_verbosity(
-        self, base: str, goal: str, verbosity: str, tone: str,
+        self,
+        base: str,
+        goal: str,
+        verbosity: str,
+        tone: str,
     ) -> str:
         """Expand or trim the base message according to verbosity."""
         if verbosity == "minimal":

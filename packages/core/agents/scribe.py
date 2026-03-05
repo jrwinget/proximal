@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Any, List, Dict
-from .base import BaseAgent
-from .registry import register_agent
-from .planner import _json
+
+from typing import Any, Dict, List
+
 from .. import memory
+from .base import BaseAgent
+from .planner import _json
+from .registry import register_agent
 
 
 @register_agent("scribe")

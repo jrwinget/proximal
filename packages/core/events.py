@@ -12,9 +12,9 @@ from collections import deque
 from datetime import datetime, timezone
 from fnmatch import fnmatch
 from typing import Any, Callable, Coroutine, Optional
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
-from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 

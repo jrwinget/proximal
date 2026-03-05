@@ -11,9 +11,9 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any
 
+from ..events import Event, EventBus, Topics, get_event_bus
 from .base import BaseAgent
 from .registry import register_agent
-from ..events import Event, EventBus, Topics, get_event_bus
 
 if TYPE_CHECKING:
     from ..integrations.calendar_provider import CalendarProvider
@@ -53,20 +53,24 @@ class ChronosAgent(BaseAgent):
         # reorder high-priority tasks into peak-hour slots
         if peak_hours:
             schedule = self._apply_peak_hours(
-                schedule, peak_hours, tasks,
+                schedule,
+                peak_hours,
+                tasks,
             )
 
         # add buffers and transition time for time blindness
         if time_blindness in ("moderate", "high"):
             schedule = self._apply_time_buffers(
-                schedule, time_blindness,
+                schedule,
+                time_blindness,
             )
 
         # in low-energy mode, cap schedule to fewer hours
         low_energy = context.get_signal("low_energy_mode", False)
         if low_energy:
             schedule = self._trim_for_low_energy(
-                schedule, context.energy_config.max_daily_hours,
+                schedule,
+                context.energy_config.max_daily_hours,
             )
 
         total_hours = sum(t.get("estimate_h", 1) for t in tasks)
@@ -137,12 +141,11 @@ class ChronosAgent(BaseAgent):
         # if no priority info, treat first half as high-priority
         if not high_priority_indices:
             non_break = [
-                i for i in range(len(schedule))
+                i
+                for i in range(len(schedule))
                 if not (
                     isinstance(schedule[i].get("task", {}), dict)
-                    and schedule[i].get("task", {}).get(
-                        "title", ""
-                    ).lower() == "break"
+                    and schedule[i].get("task", {}).get("title", "").lower() == "break"
                 )
             ]
             high_priority_indices = non_break[: len(non_break) // 2]
@@ -172,14 +175,17 @@ class ChronosAgent(BaseAgent):
         buffer_pct = 0.15 if time_blindness == "moderate" else 0.30
         add_transitions = time_blindness == "high"
         result: list[dict[str, Any]] = []
-        remaining = len([
-            e for e in schedule
-            if not (
-                isinstance(e.get("task", {}), dict)
-                and e.get("task", {}).get("title", "").lower()
-                in ("break", "transition time")
-            )
-        ])
+        remaining = len(
+            [
+                e
+                for e in schedule
+                if not (
+                    isinstance(e.get("task", {}), dict)
+                    and e.get("task", {}).get("title", "").lower()
+                    in ("break", "transition time")
+                )
+            ]
+        )
 
         for i, entry in enumerate(schedule):
             task_data = entry.get("task", {})
@@ -206,17 +212,14 @@ class ChronosAgent(BaseAgent):
                     duration_min = (eh * 60 + em) - (sh * 60 + sm)
                     buffer_min = int(duration_min * buffer_pct)
                     new_end = eh * 60 + em + buffer_min
-                    buffered["end"] = (
-                        f"{new_end // 60:02d}:{new_end % 60:02d}"
-                    )
+                    buffered["end"] = f"{new_end // 60:02d}:{new_end % 60:02d}"
                 except (ValueError, IndexError):
                     pass
 
             # add concrete time note
             if remaining > 0:
                 buffered["time_note"] = (
-                    f"about {remaining} session"
-                    f"{'s' if remaining != 1 else ''} left"
+                    f"about {remaining} session{'s' if remaining != 1 else ''} left"
                 )
             remaining -= 1
 
@@ -229,23 +232,23 @@ class ChronosAgent(BaseAgent):
                     try:
                         th, tm = map(int, t_start.split(":"))
                         t_end_min = th * 60 + tm + 5
-                        t_end = (
-                            f"{t_end_min // 60:02d}:"
-                            f"{t_end_min % 60:02d}"
-                        )
+                        t_end = f"{t_end_min // 60:02d}:{t_end_min % 60:02d}"
                     except (ValueError, IndexError):
                         t_end = t_start
-                    result.append({
-                        "task": {"title": "Transition time"},
-                        "start": t_start,
-                        "end": t_end,
-                    })
+                    result.append(
+                        {
+                            "task": {"title": "Transition time"},
+                            "start": t_start,
+                            "end": t_end,
+                        }
+                    )
 
         return result
 
     @staticmethod
     def _trim_for_low_energy(
-        schedule: list[dict[str, Any]], max_daily: float,
+        schedule: list[dict[str, Any]],
+        max_daily: float,
     ) -> list[dict[str, Any]]:
         """Reduce schedule to half the normal daily hours."""
         cap_hours = max(1.0, max_daily * 0.5)
@@ -343,9 +346,7 @@ class ChronosAgent(BaseAgent):
 
     # -- calendar conflict helpers -------------------------------------------
 
-    async def _check_calendar_conflicts(
-        self, event: Event
-    ) -> list[dict[str, Any]]:
+    async def _check_calendar_conflicts(self, event: Event) -> list[dict[str, Any]]:
         """Check a calendar event against existing events for overlaps.
 
         Parameters
@@ -380,21 +381,21 @@ class ChronosAgent(BaseAgent):
         for evt in existing:
             # overlap: new_start < evt.end and new_end > evt.start
             if new_start < evt.end and new_end > evt.start:
-                conflicts.append({
-                    "new_event": new_title,
-                    "new_time": f"{new_start.isoformat()}-{new_end.isoformat()}",
-                    "conflict_with": evt.title,
-                    "event_time": f"{evt.start.isoformat()}-{evt.end.isoformat()}",
-                })
+                conflicts.append(
+                    {
+                        "new_event": new_title,
+                        "new_time": f"{new_start.isoformat()}-{new_end.isoformat()}",
+                        "conflict_with": evt.title,
+                        "event_time": f"{evt.start.isoformat()}-{evt.end.isoformat()}",
+                    }
+                )
 
         if conflicts:
             await self._emit_conflict(conflicts, event.topic)
 
         return conflicts
 
-    async def _check_plan_conflicts(
-        self, event: Event
-    ) -> list[dict[str, Any]]:
+    async def _check_plan_conflicts(self, event: Event) -> list[dict[str, Any]]:
         """Check plan tasks against calendar events.
 
         Parameters
@@ -433,12 +434,14 @@ class ChronosAgent(BaseAgent):
                 evt_start_str = evt.start.strftime("%H:%M")
                 evt_end_str = evt.end.strftime("%H:%M")
                 if task_start < evt_end_str and task_end > evt_start_str:
-                    conflicts.append({
-                        "task": task_title,
-                        "task_time": f"{task_start}-{task_end}",
-                        "conflict_with": evt.title,
-                        "event_time": f"{evt_start_str}-{evt_end_str}",
-                    })
+                    conflicts.append(
+                        {
+                            "task": task_title,
+                            "task_time": f"{task_start}-{task_end}",
+                            "conflict_with": evt.title,
+                            "event_time": f"{evt_start_str}-{evt_end_str}",
+                        }
+                    )
 
         if conflicts:
             await self._emit_conflict(conflicts, event.topic)
@@ -450,8 +453,10 @@ class ChronosAgent(BaseAgent):
     ) -> None:
         """Publish a CHRONOS_CONFLICT event on the registered bus."""
         bus = self._bus or get_event_bus()
-        await bus.publish(Event(
-            topic=Topics.CHRONOS_CONFLICT,
-            source="chronos",
-            data={"conflicts": conflicts, "trigger": trigger},
-        ))
+        await bus.publish(
+            Event(
+                topic=Topics.CHRONOS_CONFLICT,
+                source="chronos",
+                data={"conflicts": conflicts, "trigger": trigger},
+            )
+        )

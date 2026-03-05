@@ -1,9 +1,12 @@
 """Tests for workflow definition models, built-in workflows, executor, and checkpoints."""
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from packages.core.workflows.builtins import BUILTIN_WORKFLOWS
+from packages.core.workflows.checkpoints import CheckpointManager
 from packages.core.workflows.definition import (
     CheckpointPolicy,
     TriggerType,
@@ -11,10 +14,7 @@ from packages.core.workflows.definition import (
     WorkflowStep,
     WorkflowTrigger,
 )
-from packages.core.workflows.builtins import BUILTIN_WORKFLOWS
-from packages.core.workflows.executor import WorkflowExecutor, WorkflowExecution
-from packages.core.workflows.checkpoints import CheckpointManager
-
+from packages.core.workflows.executor import WorkflowExecution, WorkflowExecutor
 
 # ---------------------------------------------------------------------------
 # WorkflowTrigger model

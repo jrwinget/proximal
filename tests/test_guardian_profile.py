@@ -99,24 +99,40 @@ class TestGuardianHelpers:
 
     def test_is_low_energy_day_match(self):
         profile = UserProfile(low_energy_days=["Monday", "Friday"])
-        assert GuardianAgent._is_low_energy_day(
-            profile, _now=_MONDAY,
-        ) is True
+        assert (
+            GuardianAgent._is_low_energy_day(
+                profile,
+                _now=_MONDAY,
+            )
+            is True
+        )
 
     def test_is_low_energy_day_no_match(self):
         profile = UserProfile(low_energy_days=["Monday", "Friday"])
-        assert GuardianAgent._is_low_energy_day(
-            profile, _now=_TUESDAY,
-        ) is False
+        assert (
+            GuardianAgent._is_low_energy_day(
+                profile,
+                _now=_TUESDAY,
+            )
+            is False
+        )
 
     def test_is_low_energy_day_case_insensitive(self):
         profile = UserProfile(low_energy_days=["monday"])
-        assert GuardianAgent._is_low_energy_day(
-            profile, _now=_MONDAY,
-        ) is True
+        assert (
+            GuardianAgent._is_low_energy_day(
+                profile,
+                _now=_MONDAY,
+            )
+            is True
+        )
 
     def test_is_low_energy_day_empty_list(self):
         profile = UserProfile(low_energy_days=[])
-        assert GuardianAgent._is_low_energy_day(
-            profile, _now=_MONDAY,
-        ) is False
+        assert (
+            GuardianAgent._is_low_energy_day(
+                profile,
+                _now=_MONDAY,
+            )
+            is False
+        )

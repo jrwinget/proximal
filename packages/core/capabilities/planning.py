@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .registry import register_capability
 from ..agents.planner import PlannerAgent
-
+from .registry import register_capability
 
 # shared lazy singleton
 _planner: PlannerAgent | None = None

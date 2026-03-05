@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 project_root = Path(__file__).parent.parent
@@ -45,7 +46,11 @@ def none_content_response():
 @pytest.mark.asyncio
 async def test_chat_returns_string(mock_litellm_response):
     """chat() should return the string content from litellm response."""
-    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_litellm_response):
+    with patch(
+        "litellm.acompletion",
+        new_callable=AsyncMock,
+        return_value=mock_litellm_response,
+    ):
         from packages.core.providers.router import chat
 
         result = await chat([{"role": "user", "content": "hello"}])
@@ -56,7 +61,11 @@ async def test_chat_returns_string(mock_litellm_response):
 @pytest.mark.asyncio
 async def test_chat_passes_messages_to_litellm(mock_litellm_response):
     """chat() should pass messages through to litellm.acompletion."""
-    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_litellm_response) as mock_completion:
+    with patch(
+        "litellm.acompletion",
+        new_callable=AsyncMock,
+        return_value=mock_litellm_response,
+    ) as mock_completion:
         from packages.core.providers.router import chat
 
         messages = [{"role": "user", "content": "test"}]
@@ -68,7 +77,11 @@ async def test_chat_passes_messages_to_litellm(mock_litellm_response):
 @pytest.mark.asyncio
 async def test_chat_passes_kwargs_to_litellm(mock_litellm_response):
     """chat() should forward extra kwargs like tools and tool_choice."""
-    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=mock_litellm_response) as mock_completion:
+    with patch(
+        "litellm.acompletion",
+        new_callable=AsyncMock,
+        return_value=mock_litellm_response,
+    ) as mock_completion:
         from packages.core.providers.router import chat
 
         tools = [{"type": "function", "function": {"name": "test"}}]
@@ -81,9 +94,13 @@ async def test_chat_passes_kwargs_to_litellm(mock_litellm_response):
 @pytest.mark.asyncio
 async def test_chat_empty_choices_raises(empty_choices_response):
     """chat() should raise ProviderError when response has no choices."""
-    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=empty_choices_response):
-        from packages.core.providers.router import chat
+    with patch(
+        "litellm.acompletion",
+        new_callable=AsyncMock,
+        return_value=empty_choices_response,
+    ):
         from packages.core.providers.exceptions import ProviderError
+        from packages.core.providers.router import chat
 
         with pytest.raises(ProviderError, match="empty"):
             await chat([{"role": "user", "content": "hi"}])
@@ -92,9 +109,13 @@ async def test_chat_empty_choices_raises(empty_choices_response):
 @pytest.mark.asyncio
 async def test_chat_none_content_raises(none_content_response):
     """chat() should raise ProviderError when message content is None."""
-    with patch("litellm.acompletion", new_callable=AsyncMock, return_value=none_content_response):
-        from packages.core.providers.router import chat
+    with patch(
+        "litellm.acompletion",
+        new_callable=AsyncMock,
+        return_value=none_content_response,
+    ):
         from packages.core.providers.exceptions import ProviderError
+        from packages.core.providers.router import chat
 
         with pytest.raises(ProviderError, match="[Ee]mpty|[Nn]one"):
             await chat([{"role": "user", "content": "hi"}])
@@ -112,8 +133,8 @@ async def test_chat_authentication_error():
             message="bad key", llm_provider="openai", model="gpt-4o-mini"
         ),
     ):
-        from packages.core.providers.router import chat
         from packages.core.providers.exceptions import ProviderAuthenticationError
+        from packages.core.providers.router import chat
 
         with pytest.raises(ProviderAuthenticationError):
             await chat([{"role": "user", "content": "hi"}])
@@ -131,8 +152,8 @@ async def test_chat_rate_limit_error():
             message="rate limited", llm_provider="openai", model="gpt-4o-mini"
         ),
     ):
-        from packages.core.providers.router import chat
         from packages.core.providers.exceptions import ProviderRateLimitError
+        from packages.core.providers.router import chat
 
         with pytest.raises(ProviderRateLimitError):
             await chat([{"role": "user", "content": "hi"}])
@@ -150,8 +171,8 @@ async def test_chat_timeout_error():
             message="timeout", llm_provider="openai", model="gpt-4o-mini"
         ),
     ):
-        from packages.core.providers.router import chat
         from packages.core.providers.exceptions import ProviderTimeoutError
+        from packages.core.providers.router import chat
 
         with pytest.raises(ProviderTimeoutError):
             await chat([{"role": "user", "content": "hi"}])
@@ -169,8 +190,8 @@ async def test_chat_service_error():
             message="service down", llm_provider="openai", model="gpt-4o-mini"
         ),
     ):
-        from packages.core.providers.router import chat
         from packages.core.providers.exceptions import ProviderServiceError
+        from packages.core.providers.router import chat
 
         with pytest.raises(ProviderServiceError):
             await chat([{"role": "user", "content": "hi"}])
@@ -191,10 +212,10 @@ async def test_chat_content_returned(mock_litellm_response):
 def test_provider_imports():
     """Public API should expose chat and exception classes."""
     from packages.core.providers import (
-        chat,
+        AuthenticationError,
         ProviderError,
         RateLimitError,
-        AuthenticationError,
+        chat,
     )
 
     assert callable(chat)

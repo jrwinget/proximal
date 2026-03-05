@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from packages.core.agents.focusbuddy import FocusBuddyAgent
 from packages.core.collaboration.context import SharedContext
 from packages.core.models import EnergyConfig, EnergyLevel, UserProfile

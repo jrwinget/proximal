@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 from packages.core.agents.chronos import ChronosAgent
 from packages.core.collaboration.context import SharedContext
 from packages.core.models import EnergyConfig, EnergyLevel, UserProfile
@@ -13,7 +12,8 @@ def _make_context(tasks=None, **profile_kwargs):
     energy = EnergyConfig.for_level(EnergyLevel.medium)
     return SharedContext(
         goal="Test",
-        tasks=tasks or [
+        tasks=tasks
+        or [
             {"title": "High prio", "priority": "P0", "estimate_h": 1},
             {"title": "Low prio", "priority": "P3", "estimate_h": 1},
             {"title": "Med prio", "priority": "P2", "estimate_h": 1},
@@ -33,10 +33,7 @@ class TestChronosPeakHours:
         schedule = await agent.run(ctx)
 
         # find what's in the 10:00 slot
-        ten_slot = [
-            e for e in schedule
-            if e.get("start") == "10:00"
-        ]
+        ten_slot = [e for e in schedule if e.get("start") == "10:00"]
         assert len(ten_slot) > 0
         # the high-priority task should be in a peak slot
         task_data = ten_slot[0].get("task", {})
@@ -53,8 +50,7 @@ class TestChronosPeakHours:
         schedule = await agent.run(ctx)
         # first non-break entry should be original order
         titles = [
-            e["task"].get("title", "")
-            if isinstance(e["task"], dict) else e["task"]
+            e["task"].get("title", "") if isinstance(e["task"], dict) else e["task"]
             for e in schedule
             if not (
                 isinstance(e.get("task", {}), dict)
@@ -73,7 +69,8 @@ class TestChronosTimeBlindness:
         schedule = await agent.run(ctx)
         # no transition time entries
         transitions = [
-            e for e in schedule
+            e
+            for e in schedule
             if isinstance(e.get("task", {}), dict)
             and e["task"].get("title", "") == "Transition time"
         ]
@@ -87,10 +84,13 @@ class TestChronosTimeBlindness:
         schedule = await agent.run(ctx)
         # should have time notes on task entries
         task_entries = [
-            e for e in schedule
+            e
+            for e in schedule
             if isinstance(e.get("task", {}), dict)
-            and e["task"].get("title", "").lower() not in (
-                "break", "transition time",
+            and e["task"].get("title", "").lower()
+            not in (
+                "break",
+                "transition time",
             )
         ]
         assert all("time_note" in e for e in task_entries)
@@ -100,7 +100,8 @@ class TestChronosTimeBlindness:
         agent = ChronosAgent()
         schedule = await agent.run(ctx)
         transitions = [
-            e for e in schedule
+            e
+            for e in schedule
             if isinstance(e.get("task", {}), dict)
             and e["task"].get("title", "") == "Transition time"
         ]
@@ -111,10 +112,7 @@ class TestChronosTimeBlindness:
         ctx = _make_context(time_blindness="moderate")
         agent = ChronosAgent()
         schedule = await agent.run(ctx)
-        task_entries = [
-            e for e in schedule
-            if "time_note" in e
-        ]
+        task_entries = [e for e in schedule if "time_note" in e]
         assert any("session" in e["time_note"] for e in task_entries)
 
 
@@ -124,10 +122,7 @@ class TestChronosBackwardCompat:
     async def test_deadline_at_risk_still_works(self):
         config = EnergyConfig.for_level(EnergyLevel.medium)
         # total_hours=18 > max_daily(5)*3=15
-        tasks = [
-            {"title": f"Big {i}", "estimate_h": 6}
-            for i in range(3)
-        ]
+        tasks = [{"title": f"Big {i}", "estimate_h": 6} for i in range(3)]
         ctx = SharedContext(
             goal="Test",
             tasks=tasks,

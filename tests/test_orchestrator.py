@@ -1,12 +1,13 @@
 """Tests for OrchestratorV2 phased execution (WP7)."""
 
-import pytest
 from unittest.mock import patch
 
-from packages.core.orchestrator import OrchestratorV2
-from packages.core.collaboration.context import SharedContext
+import pytest
+
 from packages.core.agents.base import BaseAgent
+from packages.core.collaboration.context import SharedContext
 from packages.core.models import UserProfile
+from packages.core.orchestrator import OrchestratorV2
 
 
 class MockAgent(BaseAgent):

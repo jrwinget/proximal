@@ -43,7 +43,9 @@ class CalendarProvider(ABC):
         ...
 
     @abstractmethod
-    async def update_event(self, event_id: str, event: CalendarEvent) -> CalendarEvent | None:
+    async def update_event(
+        self, event_id: str, event: CalendarEvent
+    ) -> CalendarEvent | None:
         """Update an existing calendar event.
 
         Parameters
@@ -79,7 +81,9 @@ class StubCalendarProvider(CalendarProvider):
         self._events.append(event)
         return event
 
-    async def update_event(self, event_id: str, event: CalendarEvent) -> CalendarEvent | None:
+    async def update_event(
+        self, event_id: str, event: CalendarEvent
+    ) -> CalendarEvent | None:
         for i, e in enumerate(self._events):
             if e.id == event_id:
                 updated = event.model_copy(update={"id": event_id})
@@ -113,9 +117,7 @@ class GoogleCalendarProvider(CalendarProvider):
         service_account_info: dict | None = None,
     ) -> None:
         self._calendar_id = calendar_id
-        self._service = self._build_service(
-            service_account_path, service_account_info
-        )
+        self._service = self._build_service(service_account_path, service_account_info)
 
     @staticmethod
     def _build_service(
@@ -154,23 +156,21 @@ class GoogleCalendarProvider(CalendarProvider):
 
     # -- public api ----------------------------------------------------------
 
-    async def get_events(
-        self, start: datetime, end: datetime
-    ) -> list[CalendarEvent]:
+    async def get_events(self, start: datetime, end: datetime) -> list[CalendarEvent]:
 
         try:
             result = await asyncio.to_thread(
-                lambda: self._service.events()
-                .list(
-                    calendarId=self._calendar_id,
-                    timeMin=start.isoformat()
-                    + ("Z" if not start.tzinfo else ""),
-                    timeMax=end.isoformat()
-                    + ("Z" if not end.tzinfo else ""),
-                    singleEvents=True,
-                    orderBy="startTime",
+                lambda: (
+                    self._service.events()
+                    .list(
+                        calendarId=self._calendar_id,
+                        timeMin=start.isoformat() + ("Z" if not start.tzinfo else ""),
+                        timeMax=end.isoformat() + ("Z" if not end.tzinfo else ""),
+                        singleEvents=True,
+                        orderBy="startTime",
+                    )
+                    .execute()
                 )
-                .execute()
             )
             return [self._to_event(item) for item in result.get("items", [])]
         except Exception:
@@ -181,9 +181,11 @@ class GoogleCalendarProvider(CalendarProvider):
 
         body = self._to_body(event)
         result = await asyncio.to_thread(
-            lambda: self._service.events()
-            .insert(calendarId=self._calendar_id, body=body)
-            .execute()
+            lambda: (
+                self._service.events()
+                .insert(calendarId=self._calendar_id, body=body)
+                .execute()
+            )
         )
         return self._to_event(result)
 
@@ -194,34 +196,34 @@ class GoogleCalendarProvider(CalendarProvider):
         body = self._to_body(event)
         try:
             result = await asyncio.to_thread(
-                lambda: self._service.events()
-                .patch(
-                    calendarId=self._calendar_id,
-                    eventId=event_id,
-                    body=body,
+                lambda: (
+                    self._service.events()
+                    .patch(
+                        calendarId=self._calendar_id,
+                        eventId=event_id,
+                        body=body,
+                    )
+                    .execute()
                 )
-                .execute()
             )
             return self._to_event(result)
         except Exception:
-            logger.exception(
-                "failed to update google calendar event %s", event_id
-            )
+            logger.exception("failed to update google calendar event %s", event_id)
             return None
 
     async def delete_event(self, event_id: str) -> bool:
 
         try:
             await asyncio.to_thread(
-                lambda: self._service.events()
-                .delete(calendarId=self._calendar_id, eventId=event_id)
-                .execute()
+                lambda: (
+                    self._service.events()
+                    .delete(calendarId=self._calendar_id, eventId=event_id)
+                    .execute()
+                )
             )
             return True
         except Exception:
-            logger.exception(
-                "failed to delete google calendar event %s", event_id
-            )
+            logger.exception("failed to delete google calendar event %s", event_id)
             return False
 
     # -- helpers -------------------------------------------------------------
@@ -325,9 +327,7 @@ class OutlookCalendarProvider(CalendarProvider):
 
     # -- public api ----------------------------------------------------------
 
-    async def get_events(
-        self, start: datetime, end: datetime
-    ) -> list[CalendarEvent]:
+    async def get_events(self, start: datetime, end: datetime) -> list[CalendarEvent]:
         import httpx
 
         try:
@@ -344,10 +344,7 @@ class OutlookCalendarProvider(CalendarProvider):
                     },
                 )
                 resp.raise_for_status()
-                return [
-                    self._to_event(item)
-                    for item in resp.json().get("value", [])
-                ]
+                return [self._to_event(item) for item in resp.json().get("value", [])]
         except Exception:
             logger.exception("failed to fetch outlook calendar events")
             return []
@@ -383,9 +380,7 @@ class OutlookCalendarProvider(CalendarProvider):
                 resp.raise_for_status()
                 return self._to_event(resp.json())
         except Exception:
-            logger.exception(
-                "failed to update outlook calendar event %s", event_id
-            )
+            logger.exception("failed to update outlook calendar event %s", event_id)
             return None
 
     async def delete_event(self, event_id: str) -> bool:
@@ -401,9 +396,7 @@ class OutlookCalendarProvider(CalendarProvider):
                 resp.raise_for_status()
                 return True
         except Exception:
-            logger.exception(
-                "failed to delete outlook calendar event %s", event_id
-            )
+            logger.exception("failed to delete outlook calendar event %s", event_id)
             return False
 
     # -- helpers -------------------------------------------------------------

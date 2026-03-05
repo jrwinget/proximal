@@ -1,7 +1,5 @@
-
 from packages.core.models import UserProfile
 from packages.core.profiles import create_default_profile, merge_profile_updates
-
 
 # ---------------------------------------------------------------------------
 # UserProfile model
