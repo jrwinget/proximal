@@ -68,20 +68,23 @@ productivity gurus think it should.
 orchestration pipeline. Each agent handles one thing well, so you're not
 overwhelmed by a single "do everything" AI:
 
-| Agent          | What They Do For You                                                                                                                    |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| **Planner**    | Breaks down overwhelming projects into manageable pieces                                                                                |
-| **Chronos**    | Schedules tasks realistically, checks your calendar for conflicts via a pluggable CalendarProvider, and learns from your time estimates |
-| **Guardian**   | Monitors your wellness across sessions -- tracks breaks, detects burnout risk, and nudges you to rest                                   |
-| **Mentor**     | Provides encouragement adapted to how you're feeling (gentle when overwhelmed, energetic when you're on a roll)                         |
-| **Scribe**     | Remembers important details so your working memory doesn't have to                                                                      |
-| **Liaison**    | Helps draft emails and messages when words are hard -- activates automatically when deadlines are at risk                               |
-| **FocusBuddy** | Creates focused work sessions adapted to your energy level (15-50 min)                                                                  |
+| Agent          | What They Do For You                                                                                                                                           |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Planner**    | Breaks down overwhelming projects into manageable pieces. Limits choices when decision fatigue is high.                                                         |
+| **Chronos**    | Schedules tasks during your peak hours, buffers time estimates for time blindness, checks calendar conflicts, and learns from your estimates.                   |
+| **Guardian**   | Monitors your wellness proactively -- activates low-energy mode on your tough days, tracks breaks, detects burnout, and watches for overwork under deadlines.  |
+| **Mentor**     | Adapts encouragement to your preferred tone, celebration style, and verbosity. Gets gentler on hard days and supportive when deadlines press.                  |
+| **Scribe**     | Remembers important details so your working memory doesn't have to.                                                                                            |
+| **Liaison**    | Helps draft emails and messages when words are hard -- activates automatically when deadlines are at risk.                                                     |
+| **FocusBuddy** | Creates focus sessions matched to your preferred duration and focus style (hyperfocus, variable, short-burst). Shortens sessions and adds breaks on low days.  |
 
-Agents communicate through a shared context with signals (e.g. Guardian detects
-overwhelm, Mentor adapts its tone, FocusBuddy shortens sessions). Capabilities
-can be extended via the [plugin system](docs/plugins.md) without modifying core
-code.
+Every agent reads your `UserProfile` to personalize its behavior -- your peak
+hours, focus style, time blindness, decision fatigue, low-energy days, tone,
+celebration style, and verbosity all shape how the system works with you. Agents
+communicate through shared signals (e.g. Guardian detects overwhelm → Mentor
+softens its tone → FocusBuddy shortens sessions → Chronos trims the schedule).
+Capabilities can be extended via the [plugin system](docs/plugins.md) without
+modifying core code.
 
 ## Getting Started
 
@@ -248,11 +251,27 @@ authentication, session management, and logging.
 - [x] Analytics dashboard (task completion, burnout risk, estimate accuracy)
 - [x] Voice input and goal extraction (optional `[voice]` extra)
 
+**v0.5 -- Wire Dormant Infrastructure** (done)
+
+- [x] FocusBuddy uses `preferred_session_minutes` and `focus_style` from profile
+- [x] Chronos schedules high-priority tasks during `peak_hours`, buffers for
+      `time_blindness`
+- [x] Guardian proactively activates `low_energy_mode` on `low_energy_days`,
+      reduces overwhelm threshold
+- [x] Mentor adapts to `tone`, `celebration_style`, and `verbosity`
+- [x] Planner caps tasks and pre-selects priorities for high `decision_fatigue`
+- [x] `low_energy_mode` signal wired to FocusBuddy, Chronos, and Mentor
+- [x] `deadline_at_risk` signal wired to Guardian and Mentor
+
 **Next**
 
 - [x] Full calendar API integration (Google / Outlook) — `CalendarProvider`
       abstraction with conflict detection, Google (service account) and Outlook
       (Microsoft Graph) providers via optional `[calendar]` extra
+- [ ] Deepen execution layer (mid-session check-ins, transition support,
+      momentum tracking, body doubling)
+- [ ] Emotional intelligence (mood-adaptive tone, frustration detection)
+- [ ] Adaptive scaffolding (competence tracking, dynamic support levels)
 - [ ] Mobile companion app
 - [ ] Speaker diarization for multi-person planning sessions
 - [ ] Frontend dashboard for analytics

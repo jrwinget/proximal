@@ -45,9 +45,34 @@ class PlannerAgent(BaseAgent):
     async def run(self, context) -> any:
         """Run the planner pipeline within a shared context."""
         goal = context.goal
-        result = await self.plan_llm({"goal": goal})
+
+        # read decision-fatigue settings from user profile
+        profile = getattr(context, "user_profile", None)
+        decision_fatigue = getattr(profile, "decision_fatigue", "moderate")
+        overwhelm_threshold = getattr(profile, "overwhelm_threshold", 5)
+
+        result = await self.plan_llm({
+            "goal": goal,
+            "decision_fatigue": decision_fatigue,
+        })
         tasks = result.get("tasks", [])
+
+        # cap tasks when decision fatigue is high to reduce choice paralysis
+        if decision_fatigue == "high":
+            # sort by priority (P0 first) before trimming
+            priority_order = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
+            tasks = sorted(
+                tasks,
+                key=lambda t: priority_order.get(str(t.priority), 4),
+            )
+            tasks = tasks[:overwhelm_threshold]
+
         context.tasks = [t.model_dump() for t in tasks]
+
+        # mark the first task as the recommended starting point
+        if decision_fatigue == "high" and context.tasks:
+            context.tasks[0]["recommended_next"] = True
+
         return context.tasks
 
     def can_contribute(self, context) -> bool:
@@ -152,6 +177,7 @@ class PlannerAgent(BaseAgent):
     async def plan_llm(self, state: dict) -> dict:
         """Transform goal into tasks with memory context."""
         goal = state.get("goal", state.get("original_goal", ""))
+        decision_fatigue = state.get("decision_fatigue", "moderate")
 
         # get user preferences
         preferences = session_manager.get_user_preferences()
@@ -173,9 +199,24 @@ class PlannerAgent(BaseAgent):
                             sample_tasks.append(task.get("title", ""))
                     history_context += ", ".join(sample_tasks) + "\n"
 
+        # build decision fatigue context for the prompt
+        fatigue_context = ""
+        if decision_fatigue == "high":
+            fatigue_context = (
+                "The user has high decision fatigue. Generate fewer, "
+                "more focused tasks. Pre-select priorities and include "
+                "a clear recommended starting point.\n"
+            )
+        elif decision_fatigue == "moderate":
+            fatigue_context = (
+                "The user has moderate decision fatigue. "
+                "Keep options manageable.\n"
+            )
+
         prompt = (
             "You are Core-Planner, an expert project planning AI.\n\n"
             f"{pref_context}\n"
+            f"{fatigue_context}"
             f"{history_context}\n"
             f"Transform this goal into detailed tasks:\n{goal}\n\n"
             "Consider the user's preferences and past similar projects. "

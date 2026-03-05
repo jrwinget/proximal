@@ -7,10 +7,10 @@ signals (overwhelm, deadline risk, energy configuration, etc.).
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from packages.core.agents.base import BaseAgent
+import pytest
+
 from packages.core.agents import (
     AGENT_REGISTRY,
     ChronosAgent,
@@ -21,9 +21,9 @@ from packages.core.agents import (
     PlannerAgent,
     ScribeAgent,
 )
+from packages.core.agents.base import BaseAgent
 from packages.core.collaboration.context import SharedContext
 from packages.core.models import EnergyConfig, EnergyLevel, UserProfile
-
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -554,9 +554,11 @@ class TestMultiAgentSignalCascade:
         mentor_result = await mentor.run(ctx)
         assert "feels like a lot" in mentor_result.lower()
 
-        # phase 3: focusbuddy creates short sessions for low energy
+        # phase 3: focusbuddy creates short sessions for low energy;
+        # low_energy_mode signal further reduces duration (0.6x, min 10)
         sessions = await focusbuddy.run(ctx)
-        assert all(s["duration_min"] == 15 for s in sessions)
+        assert all(s["duration_min"] <= 15 for s in sessions)
+        assert all(s["duration_min"] >= 10 for s in sessions)
 
     @pytest.mark.asyncio
     async def test_deadline_risk_cascade_chronos_liaison_scribe(self, monkeypatch):

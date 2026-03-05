@@ -1,16 +1,13 @@
 """Tests for the analytics module — aggregator, recording, and models."""
 
-import pytest
-import pytest_asyncio
 import os
 from datetime import datetime, timezone
 from unittest.mock import patch
 
-from packages.core.analytics.models import (
-    EnergySnapshot,
-    FocusSessionRecord,
-    TaskCompletion,
-)
+import pytest
+import pytest_asyncio
+
+import packages.core.analytics.aggregator as agg_mod
 from packages.core.analytics.aggregator import (
     AnalyticsAggregator,
     init_analytics_db,
@@ -18,7 +15,11 @@ from packages.core.analytics.aggregator import (
     record_focus_session,
     record_task_completion,
 )
-import packages.core.analytics.aggregator as agg_mod
+from packages.core.analytics.models import (
+    EnergySnapshot,
+    FocusSessionRecord,
+    TaskCompletion,
+)
 
 
 @pytest.fixture
