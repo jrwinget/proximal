@@ -45,6 +45,11 @@ class Topics:
     CHRONOS_RESCHEDULE = "chronos.reschedule"
     CHRONOS_ESTIMATE_LEARNING = "chronos.estimate_learning"
 
+    FOCUSBUDDY_CHECKIN = "focusbuddy.checkin"
+    FOCUSBUDDY_PRESENCE = "focusbuddy.presence"
+    FOCUSBUDDY_TRANSITION = "focusbuddy.transition"
+    FOCUSBUDDY_RETROSPECTIVE = "focusbuddy.retrospective"
+
     CALENDAR_EVENT_CREATED = "calendar.event_created"
     CALENDAR_EVENT_CHANGED = "calendar.event_changed"
     CALENDAR_EVENT_DELETED = "calendar.event_deleted"

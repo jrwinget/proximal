@@ -720,6 +720,74 @@ def analytics(
 
 
 @app.command()
+def focus(
+    goal: str = typer.Argument(..., help="What you're working on"),
+    body_double: bool = typer.Option(
+        False, "--body-double", "-b", help="Enable body-doubling presence mode"
+    ),
+    duration: int = typer.Option(
+        25, "--duration", "-d", help="Session length in minutes"
+    ),
+    style: str = typer.Option(
+        "variable",
+        "--style",
+        "-s",
+        help="Focus style: hyperfocus, variable, short-burst",
+    ),
+    energy: str = typer.Option(
+        "medium", "--energy", "-e", help="Energy level: low, medium, high"
+    ),
+):
+    """
+    Start a focus session with optional body-doubling presence mode.
+
+    Body doubling provides quiet periodic presence signals — like a
+    study buddy sitting across the table.
+    """
+    from packages.core.agents.focusbuddy import FocusBuddyAgent
+
+    buddy = FocusBuddyAgent()
+
+    if body_double:
+        console.print(
+            f"[bold green]Body-doubling mode[/bold green] — working on '{goal}'"
+        )
+        console.print(
+            f"[dim]Style: {style} | Energy: {energy} | Duration: {duration}min[/dim]\n"
+        )
+        try:
+            elapsed = 0
+            tick = buddy.build_presence_tick(style, energy, elapsed_minutes=elapsed)
+            interval = tick["interval_min"]
+            console.print(
+                f"  [cyan]{tick['message']}[/cyan]  (check-in every {interval}min)"
+            )
+            import time
+
+            while elapsed < duration:
+                time.sleep(min(interval * 60, (duration - elapsed) * 60))
+                elapsed += interval
+                if elapsed >= duration:
+                    break
+                tick = buddy.build_presence_tick(style, energy, elapsed_minutes=elapsed)
+                console.print(
+                    f"  [cyan]{tick['message']}[/cyan]  ({elapsed}/{duration}min)"
+                )
+        except KeyboardInterrupt:
+            pass
+        console.print(
+            f"\n[bold green]Session complete![/bold green] "
+            f"({min(elapsed, duration)}/{duration}min)"
+        )
+    else:
+        console.print(
+            f"[bold green]Focus session[/bold green] — "
+            f"'{goal}' for {duration}min ({style})"
+        )
+        console.print("[dim]Use --body-double for presence mode[/dim]")
+
+
+@app.command()
 def mcp_serve():
     """
     Start proximal as an MCP (Model Context Protocol) server.
