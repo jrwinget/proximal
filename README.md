@@ -137,6 +137,9 @@ proximal plan "Build a mobile app" --interactive
 # plan with energy awareness
 proximal plan "Redesign my personal website" --energy low
 
+# plan with energy awareness
+proximal plan "Redesign my personal website" --energy low
+
 # break tasks into smaller pieces
 proximal breakdown "Implement user authentication" --hours 8
 
@@ -160,6 +163,7 @@ Want to integrate `proximal` into your own app? Run it as an API server:
 
 ```bash
 pip install -e ".[server]"
+python -c "from apps.server.main import start; start()"
 python -c "from apps.server.main import start; start()"
 # Runs on http://localhost:7315
 ```

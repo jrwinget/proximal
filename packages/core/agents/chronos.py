@@ -36,6 +36,15 @@ class ChronosAgent(BaseAgent):
             self._calendar_provider = get_calendar_provider("stub")
         self._bus: EventBus | None = None
 
+    def __init__(self, calendar_provider: CalendarProvider | None = None) -> None:
+        from ..integrations.calendar_provider import get_calendar_provider
+
+        if calendar_provider is not None:
+            self._calendar_provider = calendar_provider
+        else:
+            self._calendar_provider = get_calendar_provider("stub")
+        self._bus: EventBus | None = None
+
     def __repr__(self) -> str:
         return "ChronosAgent()"
 
@@ -277,6 +286,7 @@ class ChronosAgent(BaseAgent):
     def register_subscriptions(self, bus: EventBus) -> None:
         """Wire up event handlers on the given bus."""
         self._bus = bus
+        self._bus = bus
         bus.subscribe("calendar.*", self._on_calendar_event)
         bus.subscribe(Topics.TASK_ESTIMATE_EXCEEDED, self._on_estimate_exceeded)
         bus.subscribe(Topics.PLAN_CREATED, self._on_plan_created)
@@ -294,7 +304,27 @@ class ChronosAgent(BaseAgent):
         list[dict[str, Any]] or None
             Detected conflicts, empty list if none, or None on failure.
         """
+
+    async def _on_calendar_event(self, event: Event) -> list[dict[str, Any]] | None:
+        """Handle calendar changes — check for conflicts.
+
+        Parameters
+        ----------
+        event : Event
+            A calendar event with ``start`` and ``end`` in the data payload.
+
+        Returns
+        -------
+        list[dict[str, Any]] or None
+            Detected conflicts, empty list if none, or None on failure.
+        """
         logger.debug("Chronos: calendar event %s", event.topic)
+
+        try:
+            return await self._check_calendar_conflicts(event)
+        except Exception:
+            logger.debug("Chronos: failed to check calendar conflicts", exc_info=True)
+            return None
 
         try:
             return await self._check_calendar_conflicts(event)
@@ -322,6 +352,20 @@ class ChronosAgent(BaseAgent):
             await record_task_timing(record)
         except Exception:
             logger.debug("Chronos: failed to record timing", exc_info=True)
+
+    async def _on_plan_created(self, event: Event) -> list[dict[str, Any]] | None:
+        """Check new plan against calendar for conflicts.
+
+        Parameters
+        ----------
+        event : Event
+            A plan.created event with optional ``tasks`` in data.
+
+        Returns
+        -------
+        list[dict[str, Any]] or None
+            Detected conflicts, empty list if none, or None on failure.
+        """
 
     async def _on_plan_created(self, event: Event) -> list[dict[str, Any]] | None:
         """Check new plan against calendar for conflicts.

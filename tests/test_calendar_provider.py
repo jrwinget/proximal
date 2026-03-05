@@ -117,6 +117,39 @@ class TestStubProvider:
         result = await stub.update_event("nope", event)
         assert result is None
 
+    async def test_update_event(self, stub):
+        event = CalendarEvent(
+            title="Original",
+            start=datetime(2025, 1, 1, 9, 0, tzinfo=timezone.utc),
+            end=datetime(2025, 1, 1, 10, 0, tzinfo=timezone.utc),
+        )
+        await stub.create_event(event)
+        updated = CalendarEvent(
+            title="Updated",
+            start=datetime(2025, 1, 1, 10, 0, tzinfo=timezone.utc),
+            end=datetime(2025, 1, 1, 11, 0, tzinfo=timezone.utc),
+        )
+        result = await stub.update_event(event.id, updated)
+        assert result is not None
+        assert result.title == "Updated"
+        assert result.id == event.id
+        # verify the change persists
+        events = await stub.get_events(
+            datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc),
+            datetime(2025, 1, 2, 0, 0, tzinfo=timezone.utc),
+        )
+        assert len(events) == 1
+        assert events[0].title == "Updated"
+
+    async def test_update_event_nonexistent(self, stub):
+        event = CalendarEvent(
+            title="Ghost",
+            start=datetime(2025, 1, 1, 9, 0, tzinfo=timezone.utc),
+            end=datetime(2025, 1, 1, 10, 0, tzinfo=timezone.utc),
+        )
+        result = await stub.update_event("nope", event)
+        assert result is None
+
 
 class TestFactory:
     def test_stub_provider(self):
@@ -128,6 +161,15 @@ class TestFactory:
         assert isinstance(p, StubCalendarProvider)
 
     def test_google_provider(self):
+        with patch.object(
+            GoogleCalendarProvider,
+            "_build_service",
+            staticmethod(lambda *_a, **_k: MagicMock()),
+        ):
+            p = get_calendar_provider(
+                "google",
+                service_account_info={"type": "service_account", "project_id": "test"},
+            )
         with patch.object(
             GoogleCalendarProvider,
             "_build_service",
