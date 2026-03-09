@@ -1,12 +1,13 @@
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
+
 from packages.core.agents import AGENT_REGISTRY
 from packages.core.agents.chronos import ChronosAgent
+from packages.core.agents.focusbuddy import FocusBuddyAgent
 from packages.core.agents.guardian import GuardianAgent
+from packages.core.agents.liaison import LiaisonAgent
 from packages.core.agents.mentor import MentorAgent
 from packages.core.agents.scribe import ScribeAgent
-from packages.core.agents.liaison import LiaisonAgent
-from packages.core.agents.focusbuddy import FocusBuddyAgent
 from packages.core.orchestrator import Orchestrator
 
 
@@ -68,9 +69,7 @@ def test_orchestrator_output(monkeypatch):
             return_value=[fake_task],
         ),
         patch("packages.core.agents.mentor.MentorAgent.motivate", return_value="m"),
-        patch(
-            "packages.core.agents.scribe.ScribeAgent.record_plan", return_value="ok"
-        ),
+        patch("packages.core.agents.scribe.ScribeAgent.record_plan", return_value="ok"),
         patch(
             "packages.core.agents.liaison.LiaisonAgent.draft_message",
             return_value="msg",

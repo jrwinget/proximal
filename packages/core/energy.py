@@ -10,7 +10,6 @@ from typing import Any
 
 from packages.core.models import EnergyConfig, Priority, Task
 
-
 # priority sort keys — lower number = harder/more important
 _PRIORITY_SORT = {
     Priority.critical: 0,

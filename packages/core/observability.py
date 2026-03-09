@@ -1,11 +1,12 @@
 from __future__ import annotations
+
+import functools
 import logging
 import time
-import functools
-from typing import Any, Callable, Dict, Optional
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any, Callable, Dict, Optional
 
 
 @dataclass

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from ..events import get_event_bus
 from .builtins import BUILTIN_WORKFLOWS
 from .definition import TriggerType, WorkflowDefinition
-from .executor import WorkflowExecutor, WorkflowExecution
+from .executor import WorkflowExecution, WorkflowExecutor
 
 logger = logging.getLogger(__name__)
 

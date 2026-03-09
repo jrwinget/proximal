@@ -1,7 +1,9 @@
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 import json
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
 from packages.core.models import ConversationState, MessageRole, UserPreferences
 from packages.core.session import SessionManager, _sessions
 
@@ -247,7 +249,7 @@ class TestConversationFlow:
     @patch("packages.core.agents.planner.breakdown_task_llm")
     async def test_task_breakdown_subtasks(self, mock_breakdown):
         """Test breaking down a task into subtasks"""
-        from packages.core.models import Task, Priority
+        from packages.core.models import Priority, Task
 
         task = Task(
             title="Create login page",

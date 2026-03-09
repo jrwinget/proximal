@@ -1,6 +1,6 @@
 """Tests for wellness pattern detection rules (WP3)."""
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from packages.core.models import (
     EscalationLevel,

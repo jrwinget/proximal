@@ -1,10 +1,10 @@
+import uuid
 from datetime import date, datetime, timezone
 from enum import StrEnum
-from typing import Any, Optional, List, Dict
+from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-import uuid
 
 
 class Priority(StrEnum):

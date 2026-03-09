@@ -1,8 +1,8 @@
+from packages.core.agents.focusbuddy import FocusBuddyAgent
 from packages.core.agents.guardian import GuardianAgent
+from packages.core.agents.liaison import LiaisonAgent
 from packages.core.agents.mentor import MentorAgent
 from packages.core.agents.scribe import ScribeAgent
-from packages.core.agents.liaison import LiaisonAgent
-from packages.core.agents.focusbuddy import FocusBuddyAgent
 
 
 def test_guardian_adds_breaks():

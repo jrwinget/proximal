@@ -1,14 +1,15 @@
 """Tests for MCP server exposing proximal planning capabilities."""
 
 import json
-import pytest
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from apps.mcp_server import (
-    handle_plan_goal,
     handle_break_down_task,
     handle_draft_message,
     handle_get_motivation,
+    handle_plan_goal,
 )
 
 
@@ -91,14 +92,26 @@ async def test_break_down_task_subtasks(mock_get_chat):
     mock_chat = AsyncMock(
         return_value=json.dumps(
             [
-                {"title": "Research", "detail": "Research options", "estimate_h": 1, "order": 1},
-                {"title": "Implement", "detail": "Write code", "estimate_h": 2, "order": 2},
+                {
+                    "title": "Research",
+                    "detail": "Research options",
+                    "estimate_h": 1,
+                    "order": 1,
+                },
+                {
+                    "title": "Implement",
+                    "detail": "Write code",
+                    "estimate_h": 2,
+                    "order": 2,
+                },
             ]
         )
     )
     mock_get_chat.return_value = mock_chat
 
-    result = await handle_break_down_task("Implement auth", method="subtasks", hours=4.0)
+    result = await handle_break_down_task(
+        "Implement auth", method="subtasks", hours=4.0
+    )
     data = json.loads(result)
 
     assert "items" in data
@@ -121,7 +134,9 @@ async def test_break_down_task_pomodoros(mock_get_chat):
     )
     mock_get_chat.return_value = mock_chat
 
-    result = await handle_break_down_task("Build login page", method="pomodoros", hours=2.0)
+    result = await handle_break_down_task(
+        "Build login page", method="pomodoros", hours=2.0
+    )
     data = json.loads(result)
 
     assert data["method"] == "pomodoros"

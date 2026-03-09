@@ -36,7 +36,9 @@ def _get_chat_fn() -> Callable[..., Coroutine[Any, Any, str]]:
     """
     # deferred import so the module can be loaded even when the full
     # proximal stack is not configured (e.g. during tests with mocks)
-    from packages.core.providers.router import chat as chat_model  # type: ignore[import-untyped]
+    from packages.core.providers.router import (
+        chat as chat_model,  # type: ignore[import-untyped]
+    )
 
     return chat_model
 
@@ -465,7 +467,9 @@ def _create_mcp_server() -> Any:
             from packages.core.capabilities.wellness import get_wellness_summary
 
             summary = await get_wellness_summary(user_id, days)
-            return json.dumps(summary or {"status": "no_data", "message": "No wellness data yet."})
+            return json.dumps(
+                summary or {"status": "no_data", "message": "No wellness data yet."}
+            )
         except Exception as exc:
             logger.error("check_wellness failed: %s", exc, exc_info=True)
             return json.dumps({"error": f"Wellness check failed: {exc}"})
@@ -487,7 +491,9 @@ def _create_mcp_server() -> Any:
             JSON with any detected conflicts.
         """
         try:
-            from packages.core.capabilities.productivity import check_schedule_conflicts as _check
+            from packages.core.capabilities.productivity import (
+                check_schedule_conflicts as _check,
+            )
 
             tasks = json.loads(tasks_json)
             result = await _check(tasks)
@@ -516,14 +522,21 @@ def _create_mcp_server() -> Any:
             JSON with transcription and plan.
         """
         try:
-            from packages.core.capabilities.voice import transcribe_audio, extract_goals_from_transcript
+            from packages.core.capabilities.voice import (
+                extract_goals_from_transcript,
+                transcribe_audio,
+            )
 
             transcript = transcribe_audio(audio_path)
             goals = extract_goals_from_transcript(transcript)
             goal_text = "; ".join(goals) if goals else transcript
 
             plan_result = await handle_plan_goal(goal_text, energy=energy)
-            result = {"transcript": transcript, "extracted_goals": goals, "plan": json.loads(plan_result)}
+            result = {
+                "transcript": transcript,
+                "extracted_goals": goals,
+                "plan": json.loads(plan_result),
+            }
             return json.dumps(result)
         except ImportError as exc:
             return json.dumps({"error": str(exc)})

@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 
 project_root = Path(__file__).parent.parent
@@ -13,8 +14,8 @@ sys.path.insert(0, str(project_root))
 def test_register_capability():
     """register_capability decorator should add capability to the registry."""
     from packages.core.capabilities.registry import (
-        Capability,
         CAPABILITY_REGISTRY,
+        Capability,
         register_capability,
     )
 
@@ -166,9 +167,7 @@ async def test_clarify_capability():
     """clarify capability should call planner's clarify_llm."""
     mock_result = {"needs_clarification": False, "clarification_questions": []}
 
-    with patch(
-        "packages.core.capabilities.planning.PlannerAgent"
-    ) as mock_planner_cls:
+    with patch("packages.core.capabilities.planning.PlannerAgent") as mock_planner_cls:
         mock_instance = MagicMock()
         mock_instance.clarify_llm = AsyncMock(return_value=mock_result)
         mock_planner_cls.return_value = mock_instance
@@ -209,7 +208,15 @@ def test_agent_registry_still_works():
     """AGENT_REGISTRY should still contain all agents after capability migration."""
     from packages.core.agents import AGENT_REGISTRY
 
-    expected_agents = ["planner", "chronos", "guardian", "mentor", "liaison", "scribe", "focusbuddy"]
+    expected_agents = [
+        "planner",
+        "chronos",
+        "guardian",
+        "mentor",
+        "liaison",
+        "scribe",
+        "focusbuddy",
+    ]
     for name in expected_agents:
         assert name in AGENT_REGISTRY, f"Agent '{name}' missing from AGENT_REGISTRY"
 
@@ -238,12 +245,24 @@ def test_capability_requires_llm_flags():
     """LLM capabilities should have requires_llm=True."""
     from packages.core.capabilities import CAPABILITY_REGISTRY
 
-    llm_caps = ["clarify", "plan", "prioritize", "estimate", "package_tasks", "draft_message"]
+    llm_caps = [
+        "clarify",
+        "plan",
+        "prioritize",
+        "estimate",
+        "package_tasks",
+        "draft_message",
+    ]
     for name in llm_caps:
         cap = CAPABILITY_REGISTRY[name]
         assert cap.requires_llm is True, f"Capability '{name}' should require LLM"
 
-    deterministic_caps = ["create_schedule", "create_focus_sessions", "add_wellness_nudges", "motivate"]
+    deterministic_caps = [
+        "create_schedule",
+        "create_focus_sessions",
+        "add_wellness_nudges",
+        "motivate",
+    ]
     for name in deterministic_caps:
         cap = CAPABILITY_REGISTRY[name]
         assert cap.requires_llm is False, f"Capability '{name}' should not require LLM"

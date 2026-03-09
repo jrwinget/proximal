@@ -6,8 +6,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
+from unittest.mock import AsyncMock, MagicMock, patch  # noqa: E402
+
 import pytest  # noqa: E402
-from unittest.mock import patch, MagicMock, AsyncMock  # noqa: E402
 from typer.testing import CliRunner  # noqa: E402
 
 from apps.cli import app  # noqa: E402
@@ -77,7 +78,8 @@ class TestInteractivePlanning:
 
         # run command with --server flag
         result = runner.invoke(
-            app, ["plan", "Build a mobile app", "--interactive", "--server", "--no-pretty"]
+            app,
+            ["plan", "Build a mobile app", "--interactive", "--server", "--no-pretty"],
         )
 
         # verify success

@@ -1,8 +1,9 @@
 """Tests for the event bus foundation (WP1)."""
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
 
 from packages.core.events import (
     Event,

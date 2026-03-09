@@ -1,15 +1,15 @@
-import pytest
 from unittest.mock import patch
 
-from packages.core.models import EnergyLevel, UserProfile
+import pytest
+
 from packages.core.cli_helpers import (
     display_plan_compact,
     display_plan_detailed,
+    parse_energy_flag,
     prompt_energy_level,
     prompt_profile_setup,
-    parse_energy_flag,
 )
-
+from packages.core.models import EnergyLevel, UserProfile
 
 # ---------------------------------------------------------------------------
 # sample fixtures

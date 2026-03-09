@@ -2,6 +2,7 @@ import json
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from pydantic import BaseModel
 
@@ -56,11 +57,11 @@ def _make_tool_call_response(tool_name: str, arguments: dict) -> MagicMock:
 @pytest.mark.asyncio
 async def test_structured_output_simple_model():
     """structured_output should return a validated pydantic model."""
-    response = _make_tool_call_response(
-        "respond", {"answer": "42", "confidence": 0.95}
-    )
+    response = _make_tool_call_response("respond", {"answer": "42", "confidence": 0.95})
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response):
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ):
         from packages.core.structured import structured_output
 
         result = await structured_output(
@@ -77,10 +78,15 @@ async def test_structured_output_clarification_model():
     """structured_output should work with ClarificationResult."""
     response = _make_tool_call_response(
         "respond",
-        {"needs_clarification": True, "questions": ["What platform?", "What timeline?"]},
+        {
+            "needs_clarification": True,
+            "questions": ["What platform?", "What timeline?"],
+        },
     )
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response):
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ):
         from packages.core.structured import structured_output
 
         result = await structured_output(
@@ -104,7 +110,9 @@ async def test_structured_output_nested_model():
         },
     )
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response):
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ):
         from packages.core.structured import structured_output
 
         result = await structured_output(
@@ -123,7 +131,9 @@ async def test_structured_output_custom_tool_name():
         "plan_tasks", {"answer": "yes", "confidence": 1.0}
     )
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response) as mock_chat:
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ) as mock_chat:
         from packages.core.structured import structured_output
 
         await structured_output(
@@ -143,7 +153,9 @@ async def test_structured_output_with_system_prompt():
     """structured_output should include system prompt when provided."""
     response = _make_tool_call_response("respond", {"answer": "ok", "confidence": 1.0})
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response) as mock_chat:
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ) as mock_chat:
         from packages.core.structured import structured_output
 
         await structured_output(
@@ -162,7 +174,9 @@ async def test_structured_output_no_system_prompt():
     """structured_output should omit system message when system_prompt is None."""
     response = _make_tool_call_response("respond", {"answer": "ok", "confidence": 1.0})
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response) as mock_chat:
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ) as mock_chat:
         from packages.core.structured import structured_output
 
         await structured_output(
@@ -184,7 +198,11 @@ async def test_structured_output_no_tool_calls_raises():
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=mock_response):
+    with patch(
+        "packages.core.structured.chat",
+        new_callable=AsyncMock,
+        return_value=mock_response,
+    ):
         from packages.core.structured import structured_output
 
         with pytest.raises(ValueError, match="[Nn]o tool"):
@@ -208,7 +226,11 @@ async def test_structured_output_invalid_json_raises():
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=mock_response):
+    with patch(
+        "packages.core.structured.chat",
+        new_callable=AsyncMock,
+        return_value=mock_response,
+    ):
         from packages.core.structured import structured_output
 
         with pytest.raises(ValueError, match="[Pp]arse|[Jj]son|[Ii]nvalid"):
@@ -224,7 +246,9 @@ async def test_structured_output_validation_error_raises():
     # missing required field 'confidence'
     response = _make_tool_call_response("respond", {"answer": "test"})
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response):
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ):
         from packages.core.structured import structured_output
 
         with pytest.raises(ValueError, match="[Vv]alidat"):
@@ -239,7 +263,9 @@ async def test_structured_output_builds_tool_schema():
     """structured_output should generate correct JSON schema from pydantic model."""
     response = _make_tool_call_response("respond", {"answer": "ok", "confidence": 0.5})
 
-    with patch("packages.core.structured.chat", new_callable=AsyncMock, return_value=response) as mock_chat:
+    with patch(
+        "packages.core.structured.chat", new_callable=AsyncMock, return_value=response
+    ) as mock_chat:
         from packages.core.structured import structured_output
 
         await structured_output(

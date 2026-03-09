@@ -1,8 +1,9 @@
 """Tests for reactive Guardian agent (WP3)."""
 
-import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from packages.core.agents.guardian import GuardianAgent
 from packages.core.events import Event, EventBus, Topics

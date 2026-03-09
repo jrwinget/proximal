@@ -1,19 +1,19 @@
 """Tests for the workflow scheduler (cron, event, and lifecycle management)."""
 
 import asyncio
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
+
+from packages.core.events import Event, reset_event_bus
 from packages.core.workflows.definition import (
     TriggerType,
     WorkflowDefinition,
     WorkflowStep,
     WorkflowTrigger,
 )
-from packages.core.workflows.executor import WorkflowExecutor, WorkflowExecution
+from packages.core.workflows.executor import WorkflowExecution, WorkflowExecutor
 from packages.core.workflows.scheduler import WorkflowScheduler, _should_run_now
-from packages.core.events import Event, reset_event_bus
-
 
 # ---------------------------------------------------------------------------
 # helpers

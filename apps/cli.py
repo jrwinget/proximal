@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 
-import typer
-import httpx
-import json
-import sys
-import os
 import asyncio
-from typing import Optional, List, Dict
+import json
+import os
+import sys
+from typing import Dict, List, Optional
+
+import httpx
+import typer
 from rich.console import Console
-from rich.table import Table
 from rich.prompt import Prompt
+from rich.table import Table
 
 app = typer.Typer(help="Proximal CLI - Transform ideas into actionable project plans")
 console = Console()
@@ -297,7 +298,7 @@ def breakdown(
     This helps with executive function by providing clear next actions.
     """
     # create a task object
-    from packages.core.models import Task, Priority
+    from packages.core.models import Priority, Task
 
     task = Task(
         title=task_title,
@@ -522,8 +523,9 @@ def assist(
 
     This runs all 7 agents in sequence to create a comprehensive project plan.
     """
-    from packages.core.orchestrator import Orchestrator
     from packages.core.exceptions import OrchestratorError
+
+    from packages.core.orchestrator import Orchestrator
 
     console.print(f"[bold green]Orchestrating plan for:[/bold green] {goal}")
 
@@ -583,22 +585,32 @@ def wellness(
             summary = _run_async(get_wellness_summary(user_id, days))
 
         if not summary:
-            console.print("[yellow]No wellness data found yet. Complete a few sessions first.[/yellow]")
+            console.print(
+                "[yellow]No wellness data found yet. Complete a few sessions first.[/yellow]"
+            )
             return
 
         # display insights
-        console.print(f"\n[bold]Sessions analyzed:[/bold] {summary.get('session_count', 0)}")
+        console.print(
+            f"\n[bold]Sessions analyzed:[/bold] {summary.get('session_count', 0)}"
+        )
 
         insights = summary.get("insights", [])
         if insights:
             console.print("\n[bold blue]Insights:[/bold blue]")
             for insight in insights:
                 level = insight.get("level", "info")
-                color = {"gentle_nudge": "yellow", "firm_reminder": "orange3",
-                         "escalated_warning": "red", "session_end_suggestion": "bold red"}.get(level, "white")
+                color = {
+                    "gentle_nudge": "yellow",
+                    "firm_reminder": "orange3",
+                    "escalated_warning": "red",
+                    "session_end_suggestion": "bold red",
+                }.get(level, "white")
                 console.print(f"  [{color}]{insight.get('message', '')}[/{color}]")
         else:
-            console.print("\n[green]No concerns detected. Keep up the good work![/green]")
+            console.print(
+                "\n[green]No concerns detected. Keep up the good work![/green]"
+            )
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
@@ -608,7 +620,9 @@ def wellness(
 @app.command()
 def workflow(
     action: str = typer.Argument("list", help="Action: list, start, stop, approve"),
-    name: Optional[str] = typer.Argument(None, help="Workflow name (for start/stop/approve)"),
+    name: Optional[str] = typer.Argument(
+        None, help="Workflow name (for start/stop/approve)"
+    ),
 ):
     """
     Manage autonomous workflows.
@@ -636,16 +650,22 @@ def workflow(
 
         elif action == "start" and name:
             console.print(f"[bold green]Starting workflow:[/bold green] {name}")
-            console.print("[dim]Workflow scheduling started. Use 'workflow stop' to halt.[/dim]")
+            console.print(
+                "[dim]Workflow scheduling started. Use 'workflow stop' to halt.[/dim]"
+            )
 
         elif action == "stop" and name:
             console.print(f"[yellow]Stopping workflow:[/yellow] {name}")
 
         elif action == "approve" and name:
-            console.print(f"[bold green]Approving checkpoint for workflow:[/bold green] {name}")
+            console.print(
+                f"[bold green]Approving checkpoint for workflow:[/bold green] {name}"
+            )
 
         else:
-            console.print("[bold red]Usage:[/bold red] proximal workflow [list|start|stop|approve] [name]")
+            console.print(
+                "[bold red]Usage:[/bold red] proximal workflow [list|start|stop|approve] [name]"
+            )
             sys.exit(1)
 
     except Exception as e:
@@ -657,8 +677,12 @@ def workflow(
 def analytics(
     user_id: str = typer.Option("default", "--user", "-u", help="User ID"),
     days: int = typer.Option(30, "--days", "-d", help="Number of days to analyze"),
-    report: str = typer.Option("summary", "--report", "-r",
-                               help="Report type: summary, tasks, energy, focus, burnout"),
+    report: str = typer.Option(
+        "summary",
+        "--report",
+        "-r",
+        help="Report type: summary, tasks, energy, focus, burnout",
+    ),
 ):
     """
     View analytics and productivity insights.

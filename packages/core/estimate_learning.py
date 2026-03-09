@@ -9,11 +9,10 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 import aiosqlite
 from pydantic import BaseModel, Field
-from uuid import uuid4
-
 
 # module-level state for lazy init
 _db_path: str | None = None

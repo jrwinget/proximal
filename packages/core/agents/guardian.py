@@ -11,14 +11,14 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from .base import BaseAgent
-from .registry import register_agent
 from ..events import Event, EventBus, Topics
 from ..models import (
     EscalationLevel,
     WellnessObservation,
     WellnessObservationType,
 )
+from .base import BaseAgent
+from .registry import register_agent
 
 logger = logging.getLogger(__name__)
 
@@ -37,15 +37,31 @@ class GuardianAgent(BaseAgent):
 
     # -- BaseAgent interface -------------------------------------------------
 
-    async def run(self, context) -> Any:
+    async def run(self, context, *, _now: datetime | None = None) -> Any:
         """Assess overwhelm signals and inject wellness guidance."""
         tasks = context.tasks or []
         profile = context.user_profile
 
-        # check if task count exceeds overwhelm threshold
-        if len(tasks) > profile.overwhelm_threshold:
+        # proactively activate low-energy mode on low-energy days
+        is_low_day = self._is_low_energy_day(profile, _now=_now)
+        if is_low_day:
+            context.set_signal("low_energy_mode", True)
+            await self._emit_low_energy_nudge()
+
+        # reduce effective threshold on low-energy days (~30%)
+        threshold = profile.overwhelm_threshold
+        if is_low_day:
+            threshold = max(1, int(threshold * 0.7))
+
+        # check if task count exceeds effective overwhelm threshold
+        if len(tasks) > threshold:
             context.set_signal("overwhelm_detected", True)
             context.set_signal("low_energy_mode", True)
+
+        # respond to deadline pressure with wellness monitoring
+        deadline_risk = context.get_signal("deadline_at_risk", False)
+        if deadline_risk:
+            await self._emit_deadline_wellness_nudge()
 
         result = self.add_nudges(tasks)
         return result
@@ -149,6 +165,73 @@ class GuardianAgent(BaseAgent):
             ),
         }
         return templates.get(level, templates[EscalationLevel.gentle_nudge])
+
+    # -- profile helpers -----------------------------------------------------
+
+    @staticmethod
+    def _is_low_energy_day(
+        profile,
+        *,
+        _now: datetime | None = None,
+    ) -> bool:
+        """Check if the current day is in the user's low-energy days."""
+        low_days = getattr(profile, "low_energy_days", [])
+        if not low_days:
+            return False
+        now = _now or datetime.now()
+        today_name = now.strftime("%A")
+        # case-insensitive comparison
+        return today_name.lower() in [d.lower() for d in low_days]
+
+    async def _emit_low_energy_nudge(self) -> None:
+        """Emit a gentle nudge event for low-energy days."""
+        try:
+            from ..events import Event, get_event_bus
+
+            bus = get_event_bus()
+            await bus.publish(
+                Event(
+                    topic=Topics.GUARDIAN_NUDGE,
+                    source="guardian",
+                    data={
+                        "type": "low_energy_day",
+                        "message": (
+                            "It's a low-energy day — be gentle with yourself today."
+                        ),
+                    },
+                )
+            )
+        except Exception:
+            logger.debug(
+                "Guardian: failed to emit low-energy nudge",
+                exc_info=True,
+            )
+
+    async def _emit_deadline_wellness_nudge(self) -> None:
+        """Emit a wellness nudge when deadline pressure is detected."""
+        try:
+            from ..events import Event, get_event_bus
+
+            bus = get_event_bus()
+            await bus.publish(
+                Event(
+                    topic=Topics.GUARDIAN_NUDGE,
+                    source="guardian",
+                    data={
+                        "type": "deadline_pressure",
+                        "message": (
+                            "Deadline pressure detected — remember to "
+                            "take breaks. Pushing too hard leads to "
+                            "diminishing returns."
+                        ),
+                    },
+                )
+            )
+        except Exception:
+            logger.debug(
+                "Guardian: failed to emit deadline nudge",
+                exc_info=True,
+            )
 
     # -- helpers -------------------------------------------------------------
 

@@ -7,6 +7,7 @@ development/testing and stubs for Google/Outlook that can be filled in later.
 from __future__ import annotations
 
 import asyncio
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -43,7 +44,9 @@ class CalendarProvider(ABC):
         ...
 
     @abstractmethod
-    async def update_event(self, event_id: str, event: CalendarEvent) -> CalendarEvent | None:
+    async def update_event(
+        self, event_id: str, event: CalendarEvent
+    ) -> CalendarEvent | None:
         """Update an existing calendar event.
 
         Parameters
@@ -79,7 +82,9 @@ class StubCalendarProvider(CalendarProvider):
         self._events.append(event)
         return event
 
-    async def update_event(self, event_id: str, event: CalendarEvent) -> CalendarEvent | None:
+    async def update_event(
+        self, event_id: str, event: CalendarEvent
+    ) -> CalendarEvent | None:
         for i, e in enumerate(self._events):
             if e.id == event_id:
                 updated = event.model_copy(update={"id": event_id})
@@ -113,9 +118,7 @@ class GoogleCalendarProvider(CalendarProvider):
         service_account_info: dict | None = None,
     ) -> None:
         self._calendar_id = calendar_id
-        self._service = self._build_service(
-            service_account_path, service_account_info
-        )
+        self._service = self._build_service(service_account_path, service_account_info)
 
     @staticmethod
     def _build_service(
@@ -154,23 +157,21 @@ class GoogleCalendarProvider(CalendarProvider):
 
     # -- public api ----------------------------------------------------------
 
-    async def get_events(
-        self, start: datetime, end: datetime
-    ) -> list[CalendarEvent]:
+    async def get_events(self, start: datetime, end: datetime) -> list[CalendarEvent]:
 
         try:
             result = await asyncio.to_thread(
-                lambda: self._service.events()
-                .list(
-                    calendarId=self._calendar_id,
-                    timeMin=start.isoformat()
-                    + ("Z" if not start.tzinfo else ""),
-                    timeMax=end.isoformat()
-                    + ("Z" if not end.tzinfo else ""),
-                    singleEvents=True,
-                    orderBy="startTime",
+                lambda: (
+                    self._service.events()
+                    .list(
+                        calendarId=self._calendar_id,
+                        timeMin=start.isoformat() + ("Z" if not start.tzinfo else ""),
+                        timeMax=end.isoformat() + ("Z" if not end.tzinfo else ""),
+                        singleEvents=True,
+                        orderBy="startTime",
+                    )
+                    .execute()
                 )
-                .execute()
             )
             return [self._to_event(item) for item in result.get("items", [])]
         except Exception:
@@ -181,9 +182,11 @@ class GoogleCalendarProvider(CalendarProvider):
 
         body = self._to_body(event)
         result = await asyncio.to_thread(
-            lambda: self._service.events()
-            .insert(calendarId=self._calendar_id, body=body)
-            .execute()
+            lambda: (
+                self._service.events()
+                .insert(calendarId=self._calendar_id, body=body)
+                .execute()
+            )
         )
         return self._to_event(result)
 
@@ -194,34 +197,34 @@ class GoogleCalendarProvider(CalendarProvider):
         body = self._to_body(event)
         try:
             result = await asyncio.to_thread(
-                lambda: self._service.events()
-                .patch(
-                    calendarId=self._calendar_id,
-                    eventId=event_id,
-                    body=body,
+                lambda: (
+                    self._service.events()
+                    .patch(
+                        calendarId=self._calendar_id,
+                        eventId=event_id,
+                        body=body,
+                    )
+                    .execute()
                 )
-                .execute()
             )
             return self._to_event(result)
         except Exception:
-            logger.exception(
-                "failed to update google calendar event %s", event_id
-            )
+            logger.exception("failed to update google calendar event %s", event_id)
             return None
 
     async def delete_event(self, event_id: str) -> bool:
 
         try:
             await asyncio.to_thread(
-                lambda: self._service.events()
-                .delete(calendarId=self._calendar_id, eventId=event_id)
-                .execute()
+                lambda: (
+                    self._service.events()
+                    .delete(calendarId=self._calendar_id, eventId=event_id)
+                    .execute()
+                )
             )
             return True
         except Exception:
-            logger.exception(
-                "failed to delete google calendar event %s", event_id
-            )
+            logger.exception("failed to delete google calendar event %s", event_id)
             return False
 
     # -- helpers -------------------------------------------------------------
@@ -324,10 +327,69 @@ class OutlookCalendarProvider(CalendarProvider):
         }
 
     # -- public api ----------------------------------------------------------
+    """Outlook Calendar provider via Microsoft Graph API (requires [calendar] extra).
 
-    async def get_events(
-        self, start: datetime, end: datetime
-    ) -> list[CalendarEvent]:
+    Parameters
+    ----------
+    client_id : str
+        Azure AD application client ID.
+    client_secret : str
+        Azure AD application client secret.
+    tenant_id : str
+        Azure AD tenant ID.
+    user_id : str
+        User email or ID whose calendar to access.
+    """
+
+    _GRAPH_BASE = "https://graph.microsoft.com/v1.0"
+
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        tenant_id: str,
+        user_id: str,
+    ) -> None:
+        try:
+            import msal
+        except ImportError:
+            raise ImportError(
+                "Outlook Calendar requires the [calendar] extra: "
+                "pip install proximal[calendar]"
+            ) from None
+
+        self._app = msal.ConfidentialClientApplication(
+            client_id,
+            client_credential=client_secret,
+            authority=f"https://login.microsoftonline.com/{tenant_id}",
+        )
+        self._user_id = user_id
+        self._base_url = f"{self._GRAPH_BASE}/users/{user_id}"
+
+    async def _get_token(self) -> str:
+        """Acquire an access token, using msal's built-in cache."""
+
+        result = await asyncio.to_thread(
+            self._app.acquire_token_for_client,
+            scopes=["https://graph.microsoft.com/.default"],
+        )
+        if "access_token" not in result:
+            raise RuntimeError(
+                f"Failed to acquire Microsoft Graph token: "
+                f"{result.get('error_description', 'unknown error')}"
+            )
+        return result["access_token"]
+
+    def _headers(self, token: str) -> dict:
+        """Build authorization headers for Graph API requests."""
+        return {
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        }
+
+    # -- public api ----------------------------------------------------------
+
+    async def get_events(self, start: datetime, end: datetime) -> list[CalendarEvent]:
         import httpx
 
         try:
@@ -344,10 +406,7 @@ class OutlookCalendarProvider(CalendarProvider):
                     },
                 )
                 resp.raise_for_status()
-                return [
-                    self._to_event(item)
-                    for item in resp.json().get("value", [])
-                ]
+                return [self._to_event(item) for item in resp.json().get("value", [])]
         except Exception:
             logger.exception("failed to fetch outlook calendar events")
             return []
@@ -383,9 +442,7 @@ class OutlookCalendarProvider(CalendarProvider):
                 resp.raise_for_status()
                 return self._to_event(resp.json())
         except Exception:
-            logger.exception(
-                "failed to update outlook calendar event %s", event_id
-            )
+            logger.exception("failed to update outlook calendar event %s", event_id)
             return None
 
     async def delete_event(self, event_id: str) -> bool:
@@ -401,9 +458,7 @@ class OutlookCalendarProvider(CalendarProvider):
                 resp.raise_for_status()
                 return True
         except Exception:
-            logger.exception(
-                "failed to delete outlook calendar event %s", event_id
-            )
+            logger.exception("failed to delete outlook calendar event %s", event_id)
             return False
 
     # -- helpers -------------------------------------------------------------
@@ -452,6 +507,38 @@ def get_calendar_provider(
     CalendarProvider
         The configured calendar provider instance.
     """
+    if provider_name == "google":
+        from packages.core.settings import get_settings
+
+        settings = get_settings()
+        return GoogleCalendarProvider(
+            calendar_id=kwargs.get("calendar_id", settings.google_calendar_id),
+            service_account_path=kwargs.get(
+                "service_account_path", settings.google_service_account_json
+            ),
+            service_account_info=kwargs.get("service_account_info"),
+        )
+
+    if provider_name == "outlook":
+        from packages.core.settings import get_settings
+
+        settings = get_settings()
+        return OutlookCalendarProvider(
+            client_id=kwargs.get("client_id", settings.outlook_client_id or ""),
+            client_secret=kwargs.get(
+                "client_secret", settings.outlook_client_secret or ""
+            ),
+            tenant_id=kwargs.get("tenant_id", settings.outlook_tenant_id or ""),
+            user_id=kwargs.get("user_id", settings.outlook_user_id or ""),
+        )
+
+    if provider_name == "stub":
+        return StubCalendarProvider()
+
+    logger.warning(
+        "Unknown calendar provider '%s', falling back to stub", provider_name
+    )
+    return StubCalendarProvider()
     if provider_name == "google":
         from packages.core.settings import get_settings
 

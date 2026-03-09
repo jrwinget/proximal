@@ -1,18 +1,18 @@
-from abc import ABC, abstractmethod
-from typing import Dict, Optional, List
-from datetime import datetime, timedelta, timezone
+import asyncio
 import json
 import os
-import asyncio
 import threading
+from abc import ABC, abstractmethod
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Optional
 
+from . import memory
+from .events import Event, Topics, get_event_bus
 from .models import (
     ConversationState,
     MessageRole,
     UserPreferences,
 )
-from . import memory
-from .events import Event, Topics, get_event_bus
 
 
 def _try_publish(bus, event: Event) -> None:
