@@ -492,18 +492,12 @@ class OutlookCalendarProvider(CalendarProvider):
 def get_calendar_provider(
     provider_name: str = "stub", **kwargs: object
 ) -> CalendarProvider:
-def get_calendar_provider(
-    provider_name: str = "stub", **kwargs: object
-) -> CalendarProvider:
     """Factory for calendar providers.
 
     Parameters
     ----------
     provider_name : str
         One of "stub", "google", "outlook".
-    **kwargs
-        Extra keyword arguments forwarded to the provider constructor
-        (e.g. ``calendar_id``, ``service_account_info`` for Google).
     **kwargs
         Extra keyword arguments forwarded to the provider constructor
         (e.g. ``calendar_id``, ``service_account_info`` for Google).
