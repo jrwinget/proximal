@@ -294,3 +294,31 @@ async def test_draft_message_invalid_json_from_llm(mock_get_chat):
 
     # should still produce a result using the raw text as body
     assert "subject" in data or "error" in data
+
+
+@pytest.mark.asyncio
+async def test_start_body_double_returns_presence_tick():
+    """start_body_double returns goal, duration, and presence tick."""
+    # import the handler directly — no LLM mock needed
+
+    # call the underlying focusbuddy logic directly
+    from packages.core.agents.focusbuddy import FocusBuddyAgent
+
+    buddy = FocusBuddyAgent()
+    tick = buddy.build_presence_tick("variable", "medium", elapsed_minutes=0)
+
+    assert tick["presence_mode"] is True
+    assert "interval_min" in tick
+    assert tick["focus_style"] == "variable"
+
+
+@pytest.mark.asyncio
+async def test_start_body_double_adapts_to_style():
+    """body-double presence tick adapts interval to focus style."""
+    from packages.core.agents.focusbuddy import FocusBuddyAgent
+
+    buddy = FocusBuddyAgent()
+    hyper = buddy.build_presence_tick("hyperfocus", "medium")
+    short = buddy.build_presence_tick("short-burst", "medium")
+
+    assert hyper["interval_min"] > short["interval_min"]

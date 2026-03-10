@@ -99,11 +99,10 @@ class FocusBuddyAgent(BaseAgent):
     async def on_event(self, event) -> None:
         """Handle reactive events from the event bus.
 
-        Subscribed topics:
-        - ``session.task_started`` — emit a mid-session check-in
-        - ``session.task_completed`` — track momentum
-        - ``session.started`` — initialise session tracking
-        - ``session.ended`` — generate retrospective
+        Subscribed topics: - ``session.task_started`` — emit a mid-session
+        check-in - ``session.task_completed`` — track momentum -
+        ``session.started`` — initialise session tracking - ``session.ended`` —
+        generate retrospective
         """
         from ..events import Topics
 
@@ -319,7 +318,7 @@ class FocusBuddyAgent(BaseAgent):
         self._session_start = datetime.now(timezone.utc)
 
     async def _handle_task_completed(self, event) -> None:
-        """Record completion and recalculate momentum."""
+        """Record completion timestamp and increment counter."""
         now = datetime.now(timezone.utc)
         self._completion_times.append(now)
         self._tasks_completed += 1
@@ -503,7 +502,11 @@ class FocusBuddyAgent(BaseAgent):
 
         # timing accuracy
         timing_accuracy = None
-        if estimated_minutes and actual_minutes and estimated_minutes > 0:
+        if (
+            estimated_minutes is not None
+            and actual_minutes is not None
+            and estimated_minutes > 0
+        ):
             timing_accuracy = round(actual_minutes / estimated_minutes, 2)
 
         # restart point

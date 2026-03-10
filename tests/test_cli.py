@@ -197,11 +197,41 @@ def test_plan_interactive_direct_mode_needs_clarification(mock_pipeline, runner)
         "goal": "Build an app",
     }
 
-    # this will fail because Prompt.ask is not mocked, but the pipeline call should happen
-    # we test the non-interactive path separately
+    # this will fail because Prompt.ask is not mocked, but the pipeline call
+    # should happen we test the non-interactive path separately
     result = runner.invoke(
         app, ["plan", "Build an app", "--interactive", "--no-pretty"], input="iOS\n"
     )
 
     # the interactive flow should have started
     assert "Interactive Planning" in result.stdout
+
+
+def test_focus_command_basic(runner):
+    """focus command without body-double prints session info."""
+    result = runner.invoke(app, ["focus", "Write docs"])
+    assert result.exit_code == 0
+    assert "Write docs" in result.stdout
+    assert "--body-double" in result.stdout
+
+
+@patch("apps.cli.time.sleep", side_effect=KeyboardInterrupt)
+def test_focus_body_double_interrupted(mock_sleep, runner):
+    """focus --body-double exits cleanly on ctrl-c."""
+    result = runner.invoke(
+        app,
+        ["focus", "Deep work", "--body-double", "--duration", "10"],
+    )
+    assert result.exit_code == 0
+    assert "Body-doubling mode" in result.stdout
+    assert "Deep work" in result.stdout
+
+
+def test_focus_body_double_zero_duration(runner):
+    """focus --body-double with zero duration exits immediately."""
+    result = runner.invoke(
+        app,
+        ["focus", "Quick check", "--body-double", "--duration", "0"],
+    )
+    assert result.exit_code == 0
+    assert "Session complete" in result.stdout

@@ -57,8 +57,8 @@ async def run_interactive_pipeline(
     -------
     dict
         Pipeline state. If clarification is needed, contains
-        'needs_clarification' and 'clarification_questions'. Otherwise
-        contains 'sprints' with the final plan.
+        'needs_clarification' and 'clarification_questions'. Otherwise contains
+        'sprints' with the final plan.
     """
     state: dict[str, Any] = {"goal": goal, "session_id": session_id, **kwargs}
     state = await clarify_llm(state)

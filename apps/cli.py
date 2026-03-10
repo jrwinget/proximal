@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+import time
 from typing import Dict, List, Optional
 
 import httpx
@@ -104,11 +105,12 @@ def plan(
     ),
 ):
     """
-    Transform a goal or idea into a structured project plan with tasks and sprints.
+    Transform a goal or idea into a structured project plan with tasks and
+    sprints.
 
-    By default, calls the planning pipeline directly without needing a running server.
-    Use --server to route through the API server instead.
-    Use --interactive for a conversational planning experience where PlannerAgent
+    By default, calls the planning pipeline directly without needing a running
+    server. Use --server to route through the API server instead. Use
+    --interactive for a conversational planning experience where PlannerAgent
     asks clarifying questions to create a more detailed and personalized plan.
     Use --energy to adapt plan complexity to your current energy level.
     """
@@ -397,7 +399,8 @@ def preferences(
     """
     View or update your planning preferences.
 
-    These preferences help PlannerAgent create personalized plans that match your work style.
+    These preferences help PlannerAgent create personalized plans that match
+    your work style.
     """
     try:
         if any([sprint_weeks, work_hours, tone, task_size]):
@@ -573,8 +576,8 @@ def wellness(
     """
     Show wellness insights from cross-session pattern detection.
 
-    Guardian agent tracks breaks, work duration, and late sessions to
-    identify burnout risk and provide actionable recommendations.
+    Guardian agent tracks breaks, work duration, and late sessions to identify
+    burnout risk and provide actionable recommendations.
     """
     from packages.core.capabilities.wellness import get_wellness_summary
 
@@ -627,8 +630,9 @@ def workflow(
     """
     Manage autonomous workflows.
 
-    Workflows run agents on schedules or in response to events.
-    Built-in workflows: daily_planning, proactive_checkin, weekly_status, adaptive_learning.
+    Workflows run agents on schedules or in response to events. Built-in
+    workflows: daily_planning, proactive_checkin, weekly_status,
+    adaptive_learning.
     """
     from packages.core.workflows.builtins import get_builtin_workflows
 
@@ -687,8 +691,8 @@ def analytics(
     """
     View analytics and productivity insights.
 
-    Aggregates task completion rates, energy patterns, estimate accuracy,
-    focus session adherence, and burnout risk indicators.
+    Aggregates task completion rates, energy patterns, estimate accuracy, focus
+    session adherence, and burnout risk indicators.
     """
     from packages.core.analytics.aggregator import AnalyticsAggregator
 
@@ -741,8 +745,8 @@ def focus(
     """
     Start a focus session with optional body-doubling presence mode.
 
-    Body doubling provides quiet periodic presence signals — like a
-    study buddy sitting across the table.
+    Body doubling provides quiet periodic presence signals — like a study buddy
+    sitting across the table.
     """
     from packages.core.agents.focusbuddy import FocusBuddyAgent
 
@@ -762,11 +766,10 @@ def focus(
             console.print(
                 f"  [cyan]{tick['message']}[/cyan]  (check-in every {interval}min)"
             )
-            import time
-
             while elapsed < duration:
-                time.sleep(min(interval * 60, (duration - elapsed) * 60))
-                elapsed += interval
+                step = min(interval, duration - elapsed)
+                time.sleep(step * 60)
+                elapsed += step
                 if elapsed >= duration:
                     break
                 tick = buddy.build_presence_tick(style, energy, elapsed_minutes=elapsed)
@@ -792,8 +795,8 @@ def mcp_serve():
     """
     Start proximal as an MCP (Model Context Protocol) server.
 
-    This exposes proximal's planning tools to any MCP client such as
-    Claude Desktop, VS Code, or Cursor via stdio transport.
+    This exposes proximal's planning tools to any MCP client such as Claude
+    Desktop, VS Code, or Cursor via stdio transport.
     """
     try:
         from apps.mcp_server import main as mcp_main
