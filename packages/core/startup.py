@@ -53,6 +53,19 @@ def init_reactive_layer() -> EventBus:
     except Exception:
         logger.debug("Failed to register Chronos subscriptions", exc_info=True)
 
+    # wire FocusBuddy subscriptions
+    try:
+        from .agents.focusbuddy import FocusBuddyAgent
+
+        focusbuddy = FocusBuddyAgent()
+        focusbuddy.register_subscriptions(bus)
+        logger.info("FocusBuddy reactive subscriptions registered")
+    except Exception:
+        logger.debug(
+            "Failed to register FocusBuddy subscriptions",
+            exc_info=True,
+        )
+
     # wire notification subscriptions
     try:
         from .notifications.subscribers import register_notification_subscriptions

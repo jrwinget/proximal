@@ -61,6 +61,12 @@ pip install -e ".[dev]"
 | `test_planner_profile.py`    | `decision_fatigue` task capping, priority sorting                         |
 | `test_signal_wiring.py`      | `low_energy_mode` and `deadline_at_risk` signal propagation across agents |
 
+### Agents (execution layer)
+
+| File                            | What it tests                                                                      |
+| ------------------------------- | ---------------------------------------------------------------------------------- |
+| `test_focusbuddy_execution.py`  | Mid-session check-ins, transitions, momentum tracking, retrospectives, presence mode |
+
 ### Orchestration & workflows
 
 | File                      | What it tests                               |

@@ -544,6 +544,53 @@ def _create_mcp_server() -> Any:
             logger.error("plan_from_voice failed: %s", exc, exc_info=True)
             return json.dumps({"error": f"Voice planning failed: {exc}"})
 
+    @server.tool()
+    async def start_body_double(
+        goal: str = "",
+        focus_style: str = "variable",
+        energy: str = "medium",
+        duration_minutes: int = 25,
+    ) -> str:
+        """Start a body-doubling presence session.
+
+        Body doubling provides quiet periodic presence signals — like
+        a study buddy sitting across the table.
+
+        Parameters
+        ----------
+        goal : str
+            What you're working on.
+        focus_style : str
+            Focus style: hyperfocus, variable, or short-burst.
+        energy : str
+            Energy level: low, medium, or high.
+        duration_minutes : int
+            Session length in minutes.
+
+        Returns
+        -------
+        str
+            JSON with presence tick data and session info.
+        """
+        try:
+            from packages.core.agents.focusbuddy import FocusBuddyAgent
+
+            buddy = FocusBuddyAgent()
+            tick = buddy.build_presence_tick(focus_style, energy, elapsed_minutes=0)
+            result = {
+                "goal": goal,
+                "duration_minutes": duration_minutes,
+                "presence_tick": tick,
+                "message": (
+                    f"Body-doubling session started for '{goal}'. "
+                    f"Check in every {tick['interval_min']} minutes."
+                ),
+            }
+            return json.dumps(result)
+        except Exception as exc:
+            logger.error("start_body_double failed: %s", exc, exc_info=True)
+            return json.dumps({"error": f"Body double start failed: {exc}"})
+
     return server
 
 
