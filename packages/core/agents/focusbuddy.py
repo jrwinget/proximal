@@ -94,6 +94,17 @@ class FocusBuddyAgent(BaseAgent):
 
         return create_focus_sessions(tasks)
 
+    # -- reactive event subscriptions ----------------------------------------
+
+    def register_subscriptions(self, bus) -> None:
+        """Wire up event handlers on the given bus."""
+        from ..events import Topics
+
+        bus.subscribe(Topics.SESSION_TASK_STARTED, self.on_event)
+        bus.subscribe(Topics.SESSION_TASK_COMPLETED, self.on_event)
+        bus.subscribe(Topics.SESSION_STARTED, self.on_event)
+        bus.subscribe(Topics.SESSION_ENDED, self.on_event)
+
     # -- reactive event handler (2.1, 2.3, 2.4) -----------------------------
 
     async def on_event(self, event) -> None:

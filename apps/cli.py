@@ -730,7 +730,7 @@ def focus(
         False, "--body-double", "-b", help="Enable body-doubling presence mode"
     ),
     duration: int = typer.Option(
-        25, "--duration", "-d", help="Session length in minutes"
+        25, "--duration", "-d", min=1, help="Session length in minutes"
     ),
     style: str = typer.Option(
         "variable",

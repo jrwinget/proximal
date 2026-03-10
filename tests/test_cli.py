@@ -227,11 +227,10 @@ def test_focus_body_double_interrupted(mock_sleep, runner):
     assert "Deep work" in result.stdout
 
 
-def test_focus_body_double_zero_duration(runner):
-    """focus --body-double with zero duration exits immediately."""
+def test_focus_body_double_invalid_duration(runner):
+    """focus --body-double rejects duration < 1."""
     result = runner.invoke(
         app,
         ["focus", "Quick check", "--body-double", "--duration", "0"],
     )
-    assert result.exit_code == 0
-    assert "Session complete" in result.stdout
+    assert result.exit_code != 0
